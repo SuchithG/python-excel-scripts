@@ -1,18 +1,19 @@
 import os
 import pandas as pd
 import time
+from datetime import datetime 
 
 start_time = time.time()
 
-folder_paths = [
-    "path1",
-    "path2",
-    "path3",
-    "path4",
-    "path5"
-]
-
+folder_path = "path1"
 output_folder_path = "output_path"
+
+# Function to get the current month in the required format
+def get_current_month():
+    return datetime.now().strftime('%b-%y')
+
+current_month = get_current_month()
+print(f"Filtering data for the month: {current_month}")
 
 if not os.path.exists(output_folder_path):
     os.makedirs(output_folder_path)
@@ -20,13 +21,10 @@ if not os.path.exists(output_folder_path):
 
 dfs = []
 
-for folder_path in folder_paths:
-    
-    # Check if folder path exists
-    if not os.path.exists(folder_path):
-        print(f"Folder path '{folder_path}' does not exist. Skipping...")
-        continue
-    
+# Check if folder path exists
+if not os.path.exists(folder_path):
+    print(f"Folder path '{folder_path}' does not exist. Exiting...")
+else:
     print(f"Processing files in folder: {folder_path}")
 
     # Loop through each file in the folder
@@ -46,7 +44,7 @@ for folder_path in folder_paths:
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
                     
                     # Keep only rows where necessary columns are not null
-                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1)]
+                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == current_month)]
                     
                     if not df.empty:
                         dfs.append(df)
@@ -69,12 +67,6 @@ if dfs:
 
     # Replace NaN values with 0
     result_df.fillna(0, inplace=True)
-
-    # Transpose specified columns
-    result_df = result_df.melt(id_vars=['Formula', 'Resource name', 'Date', 'Month', 'Region', 'PDF Name', 'Asset Class/Reports', 'Application', '2 eye', '4 eye', 'Error Count', 'Actual Date of upload'], 
-                               value_vars=["Setup", "Amend", "Review", "Closure ", "Deletion", "Exceptions"], 
-                               var_name='Name', 
-                               value_name='Value')
 
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "concatenated_data.xlsx")
