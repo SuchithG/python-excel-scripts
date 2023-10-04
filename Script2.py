@@ -41,7 +41,14 @@ else:
                 df = pd.read_excel(file_path)
                 
                 # Check if necessary columns are in the file
-                if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
+                if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns): 
+                    # Convert 'Date' and 'Actual Date of upload' columns to datetime
+                    df['Date'] = pd.to_datetime(df['Date'])
+                    df['Actual Date of upload'] = pd.to_datetime(df['Actual Date of upload'])
+        
+                    # Format 'Date' and 'Actual Date of upload' columns
+                    df['Date'] = df['Date'].apply(lambda x: f"{x.month}/{x.day}/{x.year}")
+                    df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime('%Y-%m-%d') 
                     
                     # Keep only rows where necessary columns are not null
                     df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == current_month)]
@@ -64,9 +71,6 @@ else:
 # After concatenating all data frames
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
-
-    # Replace NaN values with 0
-    result_df.fillna(0, inplace=True)
 
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "concatenated_data.xlsx")
