@@ -18,19 +18,21 @@ def get_previous_month_dates():
 # Function to execute queries and save data to excel
 def execute_queries_and_save_to_excel(connection, queries, file_path, previous_month_start, previous_month_end):
     print("Fetching data and storing in Excel...")
-    # Create a Pandas Excel writer
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as excel_writer:
         for query_name, query in queries.items():
-            # Replace placeholders in the query
-            query = query.replace(":prev_month_start", f"'{previous_month_start}'")
-            query = query.replace(":prev_month_end", f"'{previous_month_end}'")
             
             # Create a valid sheet name (Excel has a 31 char limit for sheet names)
             sheet_name = query_name[:31]
             
             try:
+                params = {}
+                if ':previous_month_start' in query:
+                    params['previous_month_start'] = previous_month_start
+                if ':previous_month_end' in query:
+                    params['previous_month_end'] = previous_month_end
+
                 # Fetch the query results into a DataFrame
-                df = pd.read_sql(query, con=connection)
+                df = pd.read_sql(query, con=connection, params=params)
                 
                 # Write the DataFrame to the Excel file using the sheet name
                 df.to_excel(excel_writer, sheet_name=sheet_name, index=False)
@@ -38,9 +40,7 @@ def execute_queries_and_save_to_excel(connection, queries, file_path, previous_m
             except cx_Oracle.DatabaseError as e:
                 error = e.args
                 print(f"Oracle Database error for query {query_name}:", error)
-        
-        # Save the Excel file (This is done automatically when exiting the 'with' block)
-        print("Data saved to Excel successfully.")
+    print("Data saved to Excel successfully.")
 
 # Connection details
 username = ""
