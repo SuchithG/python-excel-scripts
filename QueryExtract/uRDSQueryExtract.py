@@ -1,3 +1,4 @@
+import os
 import cx_Oracle
 import pandas as pd
 from datetime import datetime, timedelta
@@ -48,6 +49,10 @@ dsn = ""
 
 # Excel folder path
 excel_folder_path = r""
+
+# Ensure the directory exists or create it if it doesn't
+if not os.path.exists(excel_folder_path):
+    os.makedirs(excel_folder_path)
 
 # Get the dates for the previous month
 previous_month_start, previous_month_end = get_previous_month_dates()
