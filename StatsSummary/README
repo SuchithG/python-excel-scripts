@@ -1,0 +1,24 @@
+The updated script you provided performs tasks related to data manipulation of Excel spreadsheets.
+
+Imports:
+
+The script imports necessary modules:
+pandas (for data manipulation)
+time (for tracking execution time)
+Functions:
+
+adjust_month_format(value): This function receives a value and adjusts its format. If the value contains an underscore, it gets replaced with a hyphen. If the value is a valid date, it gets formatted as 'Month-Year' (e.g., 'Jan-21'). In cases of invalid dates or other issues, the original value is returned.
+adjust_date_formats(df): This function is responsible for adjusting the date format of specific columns in the provided DataFrame (df). The 'Date', 'Month', and 'Actual Date of upload' columns are formatted as per the desired formats.
+Loading Data:
+
+The script attempts to load two Excel files:
+reference_df from reference_file_path (though the data is loaded, this DataFrame is not used anywhere in the provided script).
+all_sheets from excel_file_path, which captures all sheets from the main Excel workbook.
+Data Manipulation and Saving:
+
+For every sheet in the all_sheets dictionary:
+The data in the sheet gets its date formats adjusted using the adjust_date_formats() function.
+The adjusted data is saved back to an output Excel workbook located at the specified output_path.
+Execution Time Calculation:
+
+The script calculates the total time taken for its execution and displays it in minutes at the end.
