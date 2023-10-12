@@ -17,7 +17,7 @@ def adjust_month_format(value):
 def adjust_date_formats(df):
     df['Date'] = df['Date'].dt.strftime('%m/%d/%Y')
     df['Month'] = df['Month'].apply(adjust_month_format)
-    df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime('%Y-%m-%d')
+    df['Actual Date'] = df['Actual Date'].dt.strftime('%Y-%m-%d')
     return df
 
 reference_file_path = "path/to/reference/excelfile.xlsx"
