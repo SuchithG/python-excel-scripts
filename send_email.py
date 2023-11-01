@@ -15,6 +15,11 @@ def previous_working_day(today=None):
     offset = 1 if today.weekday() != 0 else 3
     return today - timedelta(days=offset)
 
+def filtered_data_for_previous_working_day(df):
+    """Filter data for the previous working day and 'APAC' region."""
+    prev_work_day = previous_working_day()
+    return df[(df['Date'] == prev_work_day) & (df['Region'] == 'APAC')]
+
 
 def send_email_with_table(subject, df, body, to_email, attachment_path):
     from_email = "your_email@gmail.com"
@@ -61,8 +66,7 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
 
     # Load and filter data
     df = pd.read_excel("/path/to/your/excel_file.xlsx")
-    prev_work_day = previous_working_day()
-    filtered_data = df[df['Date'] == prev_work_day]
+    filtered_data = filtered_data_for_previous_working_day(df)
 
     # Calculate the '2 eye count' table for the filtered data
     aggregated_data = filtered_data.groupby(['Date', '2 eye']).agg({
@@ -75,6 +79,6 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
     aggregated_data.rename(columns={'2 eye': 'Name'}, inplace=True)
     aggregated_data['2 eye Count'] = aggregated_data[['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
-# Send the email
-response = send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
-print(response)
+    # Send the email
+    response = send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
+    print(response)
