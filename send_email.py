@@ -64,9 +64,14 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
     except Exception as e:
         print(f"Error occurred: {e}")
 
+def process_and_send_email():
     # Load and filter data
     df = pd.read_excel("/path/to/your/excel_file.xlsx")
     filtered_data = filtered_data_for_previous_working_day(df)
+
+    # If no data for the previous working day, print a statement and exit
+    if filtered_data.empty:
+        return f"No data available for the previous working day ({prev_work_day})."
 
     # Calculate the '2 eye count' table for the filtered data
     aggregated_data = filtered_data.groupby(['Date', '2 eye']).agg({
@@ -80,5 +85,8 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
     aggregated_data['2 eye Count'] = aggregated_data[['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
     # Send the email
-    response = send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
-    print(response)
+    return send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
+
+# Execute the process and print the result
+result = process_and_send_email()
+print(result)
