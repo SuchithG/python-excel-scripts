@@ -26,7 +26,7 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
     password = "your_password"  # Consider using an app-specific password if using Gmail
 
     # Convert DataFrame to HTML table
-    table_html = df.to_html()
+    table_html = df.to_html(index=False)
     msg = MIMEMultipart()
     msg["From"] = from_email
     msg["To"] = to_email
