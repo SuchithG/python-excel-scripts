@@ -84,6 +84,10 @@ def process_and_send_email():
     aggregated_data.rename(columns={'2 eye': 'Name'}, inplace=True)
     aggregated_data['2 eye Count'] = aggregated_data[['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
+    # Convert the columns to integers
+    for col in ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', '2 eye Count']:
+        aggregated_data[col] = aggregated_data[col].astype(int)
+
     # Send the email
     return send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
 
