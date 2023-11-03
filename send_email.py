@@ -15,6 +15,9 @@ def previous_working_day(today=None):
     offset = 1 if today.weekday() != 0 else 3
     return today - timedelta(days=offset)
 
+# Define prev_work_day as a global variable
+prev_work_day = previous_working_day()
+
 def filtered_data_for_previous_working_day(df):
     """Filter data for the previous working day and 'APAC' region."""
     prev_work_day = previous_working_day()
