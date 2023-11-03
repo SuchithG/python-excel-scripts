@@ -115,10 +115,12 @@ def process_and_send_email():
     }).reset_index()
     aggregated_by_app_and_asset_class['Total Count'] = aggregated_by_app_and_asset_class[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
-    # Convert columns to integers for all tables
-    for df in [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application, aggregated_by_app_and_asset_class]:
+    # Convert columns to integers for all tables 
+    all_dfs = [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application, aggregated_by_app_and_asset_class]
+    for df in all_dfs:
         for col in df.columns[2:]:
-            df[col] = df[col].fillna(0).astype(int)
+            if df[col].dtype == 'float64':  # Ensure only numeric columns undergo the conversion
+                df[col] = df[col].fillna(0).astype(int)
 
     # Generate HTML tables for both
     table_2_eye_html = aggregated_2_eye_data.to_html(index=False)
