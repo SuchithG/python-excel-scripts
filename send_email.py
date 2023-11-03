@@ -93,15 +93,26 @@ def process_and_send_email():
     aggregated_4_eye_data.rename(columns={'4 eye': 'Name'}, inplace=True)
     aggregated_4_eye_data['4 eye Count'] = aggregated_4_eye_data[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
-    # Convert the columns to integers
-    for col in ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', '2 eye Count']:
-        aggregated_2_eye_data[col] = aggregated_2_eye_data[col].astype(int)
-    for col in ['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions', '4 eye Count']:
-        aggregated_4_eye_data[col] = aggregated_4_eye_data[col].astype(int)
+    # Calculate the 'Count by application' table
+    aggregated_by_application = filtered_data.groupby(['Date', 'Application']).agg({
+        'Setup': 'sum',
+        'Amend': 'sum',
+        'Review': 'sum',
+        'Closure': 'sum',
+        'Deletion': 'sum',
+        'Exceptions': 'sum',
+    }).reset_index()
+    aggregated_by_application['Total Count'] = aggregated_by_application[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+
+    # Convert columns to integers for all tables
+    for df in [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application]:
+        for col in df.columns[2:]:
+            df[col] = df[col].astype(int)
 
     # Generate HTML tables for both
     table_2_eye_html = aggregated_2_eye_data.to_html(index=False)
     table_4_eye_html = aggregated_4_eye_data.to_html(index=False)
+    table_by_application_html = aggregated_by_application.to_html(index=False)
 
     body = f"""
     <html>
@@ -125,6 +136,8 @@ def process_and_send_email():
             {table_2_eye_html}
             <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
             {table_4_eye_html}
+            <p style="text-align:center;">Here's the "Count by application" table for {prev_work_day}:</p>
+            {table_by_application_html}
             <p style="text-align:center;">Regards,</p>
             <p style="text-align:center;">Your Name</p>
         </body>
