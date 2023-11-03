@@ -37,13 +37,25 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
 
     body = f"""
     <html>
-        <head></head>
+        <head>
+        <style>
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            table, th, td {{
+                border: 1px solid black;
+                text-align: center;
+                vertical-align: middle;
+            }}
+        </style>
+    </head>
         <body>
-            <p>Hi,</p>
-            <p>Here's the "2 eye count" table for {previous_working_day}:</p>
+            <p style="text-align:center;">Hi,</p>
+            <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
             {table_html}
-            <p>Regards,</p>
-            <p>Your Name</p>
+            <p style="text-align:center;">Regards,</p>
+            <p style="text-align:center;">Your Name</p>
         </body>
     </html>
     """
