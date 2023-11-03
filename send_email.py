@@ -104,8 +104,19 @@ def process_and_send_email():
     }).reset_index()
     aggregated_by_application['Total Count'] = aggregated_by_application[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
+    # Calculate the 'Count by application and asset class' table
+    aggregated_by_app_and_asset_class = filtered_data.groupby(['Date', 'Application', 'Asset Class/Reports']).agg({
+        'Setup': 'sum',
+        'Amend': 'sum',
+        'Review': 'sum',
+        'Closure': 'sum',
+        'Deletion': 'sum',
+        'Exceptions': 'sum',
+    }).reset_index()
+    aggregated_by_app_and_asset_class['Total Count'] = aggregated_by_app_and_asset_class[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+
     # Convert columns to integers for all tables
-    for df in [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application]:
+    for df in [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application, aggregated_by_app_and_asset_class]:
         for col in df.columns[2:]:
             df[col] = df[col].fillna(0).astype(int)
 
@@ -113,6 +124,7 @@ def process_and_send_email():
     table_2_eye_html = aggregated_2_eye_data.to_html(index=False)
     table_4_eye_html = aggregated_4_eye_data.to_html(index=False)
     table_by_application_html = aggregated_by_application.to_html(index=False)
+    table_by_app_and_asset_class_html = aggregated_by_app_and_asset_class.to_html(index=False)
 
     body = f"""
     <html>
@@ -138,6 +150,8 @@ def process_and_send_email():
             {table_4_eye_html}
             <p style="text-align:center;">Here's the "Count by application" table for {prev_work_day}:</p>
             {table_by_application_html}
+            <p style="text-align:center;">Here's the "Count by application and asset class" table for {prev_work_day}:</p>
+            {table_by_app_and_asset_class_html}
             <p style="text-align:center;">Regards,</p>
             <p style="text-align:center;">Your Name</p>
         </body>
