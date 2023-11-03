@@ -107,7 +107,7 @@ def process_and_send_email():
     # Convert columns to integers for all tables
     for df in [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application]:
         for col in df.columns[2:]:
-            df[col] = df[col].astype(int)
+            df[col] = df[col].fillna(0).astype(int)
 
     # Generate HTML tables for both
     table_2_eye_html = aggregated_2_eye_data.to_html(index=False)
