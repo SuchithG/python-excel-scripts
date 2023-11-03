@@ -47,6 +47,7 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
                 border: 1px solid black;
                 text-align: center;
                 vertical-align: middle;
+                white-space: normal;
             }}
         </style>
     </head>
