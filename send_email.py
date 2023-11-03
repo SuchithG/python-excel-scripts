@@ -35,31 +35,7 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
     msg["To"] = to_email
     msg["Subject"] = subject
 
-    body = f"""
-    <html>
-        <head>
-        <style>
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-            }}
-            table, th, td {{
-                border: 1px solid black;
-                text-align: center;
-                vertical-align: middle;
-                white-space: normal;
-            }}
-        </style>
-    </head>
-        <body>
-            <p style="text-align:center;">Hi,</p>
-            <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
-            {table_html}
-            <p style="text-align:center;">Regards,</p>
-            <p style="text-align:center;">Your Name</p>
-        </body>
-    </html>
-    """
+
 
     msg.attach(MIMEText(body, 'plain'))
 
@@ -95,22 +71,68 @@ def process_and_send_email():
         return f"No data available for the previous working day ({prev_work_day})."
 
     # Calculate the '2 eye count' table for the filtered data
-    aggregated_data = filtered_data.groupby(['Date', '2 eye']).agg({
+    aggregated_2_eye_data = filtered_data.groupby(['Date', '2 eye']).agg({
         'Setup': 'sum',
         'Amend': 'sum',
         'Closure': 'sum',
         'Deletion': 'sum',
         'Exceptions': 'sum',
     }).reset_index()
-    aggregated_data.rename(columns={'2 eye': 'Name'}, inplace=True)
-    aggregated_data['2 eye Count'] = aggregated_data[['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+    aggregated_2_eye_data.rename(columns={'2 eye': 'Name'}, inplace=True)
+    aggregated_2_eye_data['2 eye Count'] = aggregated_2_eye_data[['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+
+    # Calculate the '4 eye count' table
+    aggregated_4_eye_data = filtered_data.groupby(['Date', '4 eye']).agg({
+        'Setup': 'sum',
+        'Amend': 'sum',
+        'Review': 'sum',
+        'Closure': 'sum',
+        'Deletion': 'sum',
+        'Exceptions': 'sum',
+    }).reset_index()
+    aggregated_4_eye_data.rename(columns={'4 eye': 'Name'}, inplace=True)
+    aggregated_4_eye_data['4 eye Count'] = aggregated_4_eye_data[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
 
     # Convert the columns to integers
     for col in ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', '2 eye Count']:
-        aggregated_data[col] = aggregated_data[col].astype(int)
+        aggregated_2_eye_data[col] = aggregated_2_eye_data[col].astype(int)
+    for col in ['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions', '4 eye Count']:
+        aggregated_4_eye_data[col] = aggregated_4_eye_data[col].astype(int)
+
+    # Generate HTML tables for both
+    table_2_eye_html = aggregated_2_eye_data.to_html(index=False)
+    table_4_eye_html = aggregated_4_eye_data.to_html(index=False)
+
+    body = f"""
+    <html>
+        <head>
+        <style>
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            table, th, td {{
+                border: 1px solid black;
+                text-align: center;
+                vertical-align: middle;
+                white-space: normal;
+            }}
+        </style>
+    </head>
+        <body>
+            <p style="text-align:center;">Hi,</p>
+            <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
+            {table_2_eye_html}
+            <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
+            {table_4_eye_html}
+            <p style="text-align:center;">Regards,</p>
+            <p style="text-align:center;">Your Name</p>
+        </body>
+    </html>
+    """
 
     # Send the email
-    return send_email_with_table("Subject of Email", aggregated_data, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
+    return send_email_with_table("Subject of Email", body, "recipient_email@example.com", "/path/to/excel_workbook.xlsx")
 
 # Execute the process and print the result
 result = process_and_send_email()
