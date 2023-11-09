@@ -18,7 +18,7 @@ dq_exception_df = pd.read_excel(dq_exception_file_path, sheet_name='DQ Exception
 asset_class_dict_df = pd.read_excel(asset_class_dict_path, sheet_name='Asset Class Dictionary')
 
 # Perform an inner join on the 'MSG_TYP' column
-merged_df = pd.merge(dq_exception_df, asset_class_dict_df, on='MSG_TYP', how='inner')
+merged_df = pd.merge(dq_exception_df, asset_class_dict_df, on='MSG_TYP')
 
 # Load the 'Concept_Updated' sheet from the "DQ CDE Dictionary.xlsx" file
 concept_updated_df = pd.read_excel(asset_class_dict_path, sheet_name='Concept_Updated')
