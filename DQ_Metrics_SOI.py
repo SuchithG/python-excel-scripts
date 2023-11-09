@@ -26,10 +26,17 @@ concept_updated_df = pd.read_excel(asset_class_dict_path, sheet_name='Concept_Up
 
 # Perform the second inner join on 'NOTFCN_ID' and 'Asset Class'
 final_merged_df = merged_df_1.merge(concept_updated_df, on=['NOTFCN_ID', 'Asset Class'])
-print("Headers after second join:", final_merged_df.columns.tolist())
 
 # Group by 'Asset Class' and 'Concept', and get the sum of 'COUNT(*)'
 grouped_df = final_merged_df.groupby(['Asset Class', 'Concept'])['COUNT(*)'].sum().reset_index()
+
+# Load the 'DQ SOI' sheet from the same Excel file
+dq_soi_df = pd.read_excel(dq_exception_file_path, sheet_name='DQ SOI')
+
+# Update 'Universe Numbers' in grouped_df based on 'ASSET_CLASS' values from dq_soi_df
+asset_class_mapping = {'FixedIncome': 'FI'}
+universe_number = dq_soi_df.loc[dq_soi_df['ASSET_CLASS'] == 'FixedIncome', 'COUNT(*)'].squeeze()
+grouped_df.loc[grouped_df['Asset Class'] == asset_class_mapping['FixedIncome'], 'Universe Numbers'] = universe_number
 
 # Print the resulting DataFrame
 print(grouped_df)
