@@ -82,5 +82,4 @@ output_file_path = f'/desired/path/to/output/folder/{output_file_name}'
 # Save the resulting DataFrame to an Excel file
 grouped_df.to_excel(output_file_path, index=False)
 
-# Print the resulting DataFrame
-print(grouped_df)
+print(f"DataFrame has been saved to {output_file_path}")
