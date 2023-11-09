@@ -26,5 +26,9 @@ concept_updated_df = pd.read_excel(asset_class_dict_path, sheet_name='Concept_Up
 # Perform the second inner join on 'NOTFCN_ID' and 'Asset Class'
 final_merged_df = merged_df.merge(concept_updated_df, on=['NOTFCN_ID', 'Asset Class'])
 
+# Select only the specified columns
+final_columns = ["COUNT(*)", "MSG_TYP", "NOTFCN_ID", "Asset Class", "Concept"]
+final_df = final_merged_df[final_columns]
+
 # Display the first few rows of the resulting DataFrame
 print(merged_df.head())
