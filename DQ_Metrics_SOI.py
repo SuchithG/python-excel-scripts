@@ -18,17 +18,18 @@ dq_exception_df = pd.read_excel(dq_exception_file_path, sheet_name='DQ Exception
 asset_class_dict_df = pd.read_excel(asset_class_dict_path, sheet_name='Asset Class Dictionary')
 
 # Perform an inner join on the 'MSG_TYP' column
-merged_df = pd.merge(dq_exception_df, asset_class_dict_df, on='MSG_TYP')
+merged_df_1 = pd.merge(dq_exception_df, asset_class_dict_df, on='MSG_TYP')
+print("Headers after first join:", merged_df_1.columns.tolist())
 
-# Load the 'Concept_Updated' sheet from the "DQ CDE Dictionary.xlsx" file
+# Load the 'Concept_Updated' sheet from the Excel file
 concept_updated_df = pd.read_excel(asset_class_dict_path, sheet_name='Concept_Updated')
 
 # Perform the second inner join on 'NOTFCN_ID' and 'Asset Class'
-final_merged_df = merged_df.merge(concept_updated_df, on=['NOTFCN_ID', 'Asset Class'])
+final_merged_df = merged_df_1.merge(concept_updated_df, on=['NOTFCN_ID', 'Asset Class'])
+print("Headers after second join:", final_merged_df.columns.tolist())
 
-# Select only the specified columns
-final_columns = ["COUNT(*)", "MSG_TYP", "NOTFCN_ID", "Asset Class", "Concept"]
-final_df = final_merged_df[final_columns]
+# Group by 'Asset Class' and 'Concept', and get the sum of 'COUNT(*)'
+grouped_df = final_merged_df.groupby(['Asset Class', 'Concept'])['COUNT(*)'].sum().reset_index()
 
-# Display the first few rows of the resulting DataFrame
-print(merged_df.head())
+# Print the resulting DataFrame
+print(grouped_df)
