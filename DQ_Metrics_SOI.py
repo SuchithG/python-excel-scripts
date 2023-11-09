@@ -10,6 +10,7 @@ previous_month_date = datetime.now().replace(day=1) - timedelta(days=1)
 # Format the previous month's name and year
 previous_month_name = previous_month_date.strftime("%B-%Y")
 
+# Load the 'DQ Exception' sheet from the Excel file
 dq_exception_file_name = f"DQ_CDE_SOI_{previous_month_date.strftime('%b %y')}.xlsx"
 
 # Construct the full paths for the files
