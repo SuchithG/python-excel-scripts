@@ -70,5 +70,17 @@ grouped_df['Universe Numbers'] = grouped_df['Universe Numbers'].astype(int)
 # Add a new column 'Month' at the beginning with the previous month's name
 grouped_df.insert(0, 'Month', previous_month_name)
 
+# Add the new column 'Month' at the beginning with the previous month's name
+grouped_df.insert(0, 'Month', previous_month_name)
+
+# Construct the output file name based on the previous month
+output_file_name = f"DQ_CDE_{previous_month_date.strftime('%b-%y')}_script_output.xlsx"
+
+# Define the output file path
+output_file_path = f'/desired/path/to/output/folder/{output_file_name}'
+
+# Save the resulting DataFrame to an Excel file
+grouped_df.to_excel(output_file_path, index=False)
+
 # Print the resulting DataFrame
 print(grouped_df)
