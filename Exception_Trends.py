@@ -16,7 +16,13 @@ try:
     # Create the output DataFrame
     output_df = combined_data.copy()
 
-    # Perform any additional processing if needed
+    # Check if the columns exist before assigning them
+    if all(col in combined_data.columns for col in ["MSG_TYP", "PRIORITY", "STATUS"]):
+        output_df["MSG_TYP"] = combined_data["MSG_TYP"]
+        output_df["PRIORITY"] = combined_data["PRIORITY"]
+        output_df["STATUS"] = combined_data["STATUS"]
+    else:
+        print("Error: One or more columns not found in combined data.")
 
     # Write to output file
     output_file_path = 'path_to_your_output_excel_file.xlsx'
