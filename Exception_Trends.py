@@ -23,6 +23,7 @@ try:
         output_df["STATUS"] = combined_data["STATUS"]
     else:
         print("Error: One or more columns not found in combined data.")
+        
 
     # Write to output file
     output_file_path = 'path_to_your_output_excel_file.xlsx'
