@@ -9,6 +9,22 @@ folder_path = "path1"
 
 output_folder_path = "output_path"
 
+def parse_date(date_input):
+    """
+    Custom function to handle various date formats.
+    """
+    if isinstance(date_input, datetime):
+        return date_input  # Return the datetime object if it's already in the correct format
+
+    if isinstance(date_input, str):
+        for fmt in ("%m/%d/%Y", "%d-%b-%y", "%Y-%m-%d"):  # Add more formats as needed
+            try:
+                return datetime.strptime(date_input, fmt)
+            except ValueError:
+                continue
+
+    return None 
+
 # Function to get the current month in the required format
 def get_current_month():
     return datetime.now().strftime('%b-%y')
@@ -39,13 +55,13 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path)
+                df = pd.read_excel(file_path, dtype={'Date': str})
                 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
 
                     # Covert 'Date' and 'Actual Date of upload' columns
-                    df['Date'] = df['Date'].apply(lambda x: f"{x.month}/{x.day}/{x.year}")
+                    df['Date'] = df['Date'].apply(lambda x: parse_date(x) if isinstance(x, str) else x)
                     df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime("%Y-%m-%d")
                     
                     # Keep only rows where necessary columns are not null
