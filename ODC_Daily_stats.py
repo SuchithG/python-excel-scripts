@@ -39,7 +39,8 @@ print(f"Filtering data for the month: {current_month}")
 
 if not os.path.exists(output_folder_path):
     os.makedirs(output_folder_path)
-    print(f"Created output folder at: {output_folder_path}")
+    print(f"Created output 
+          folder at: {output_folder_path}")
 
 dfs = []
 
