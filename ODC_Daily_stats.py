@@ -11,19 +11,24 @@ output_folder_path = "output_path"
 
 def parse_date(date_input):
     """
-    Custom function to handle various date formats.
+    Custom function to handle various date formats and time-only strings.
     """
-    if isinstance(date_input, datetime):
-        return date_input  # Return the datetime object if it's already in the correct format
+    # Check for time-only strings and handle them
+    if isinstance(date_input, str) and (date_input.strip() in ["00:00:00", "12:00:00 AM", "12:00 AM"] or ':' in date_input):
+        # Return None or a default date as needed
+        return None  
 
-    if isinstance(date_input, str):
-        for fmt in ("%m/%d/%Y", "%d-%b-%y", "%Y-%m-%d"):  # Add more formats as needed
+    # Handle datetime objects and strings with date information
+    if isinstance(date_input, datetime):
+        return date_input.strftime("%m/%d/%Y")
+    elif isinstance(date_input, str):
+        for fmt in ("%m/%d/%Y", "%d-%b-%y", "%Y-%m-%d", "%Y-%m-%d %H:%M:%S"):
             try:
-                return datetime.strptime(date_input, fmt)
+                return datetime.strptime(date_input, fmt).strftime("%m/%d/%Y")
             except ValueError:
                 continue
 
-    return None 
+    return None
 
 # Function to get the current month in the required format
 def get_current_month():
@@ -55,7 +60,7 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path, dtype={'Date': str})
+                df = pd.read_excel(file_path, dtype={'Date': str}, converters={'Date': parse_date})
                 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
