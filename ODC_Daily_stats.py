@@ -55,7 +55,7 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path, dtype={'Date': str}, converters={'Date': parse_date})
+                df = pd.read_excel(file_path, dtype={'Date': str})
                 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
