@@ -6,6 +6,12 @@ from email.mime.text import MIMEText
 # Read the Excel file
 df = pd.read_excel('path/to/your/excel/file.xlsx')
 
+# Function to convert columns to integers
+def convert_columns_to_int(df, columns):
+    for col in columns:
+        df[col] = df[col].fillna(0).astype(int)
+    return df
+
 # Create Table 1
 table1_columns = ['Region', 'Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
 # Group by 'Region' and count 'PDF Name'
@@ -13,6 +19,9 @@ table1 = df[table1_columns].groupby('Region').agg({'PDF Name': 'count', 'Setup':
 table1_total = pd.DataFrame([table1[['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']].sum()], columns=table1.columns[1:])
 table1_total['Region'] = 'Total'
 table1 = pd.concat([table1, table1_total], ignore_index=True)
+# Convert numeric columns to int
+table1 = convert_columns_to_int(table1, ['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name'])
+
 
 # Create Table 2
 table2_columns = ['Region', 'PDF missed(late 4 eye/stamping)', 'Error Count']
@@ -20,6 +29,8 @@ table2 = df[table2_columns].groupby('Region').sum().reset_index()
 table2_total = pd.DataFrame([table2.sum(numeric_only=True)], columns=table2.columns)
 table2_total['Region'] = 'Total'
 table2 = pd.concat([table2, table2_total], ignore_index=True)
+# Convert numeric columns to int
+table2 = convert_columns_to_int(table2, ['PDF missed(late 4 eye/stamping)', 'Error Count'])
 
 # Convert tables to HTML
 html_table1 = table1.to_html(index=False)
