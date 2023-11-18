@@ -9,16 +9,16 @@ df = pd.read_excel('path/to/your/excel/file.xlsx')
 # Create Table 1
 table1_columns = ['Region', 'Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
 table1 = df[table1_columns].groupby('Region').sum().reset_index()
-table1_total = table1.sum(numeric_only=True)
+table1_total = pd.DataFrame([table1.sum(numeric_only=True)], columns=table1.columns)
 table1_total['Region'] = 'Total'
-table1 = table1.append(table1_total, ignore_index=True)
+table1 = pd.concat([table1, table1_total], ignore_index=True)
 
 # Create Table 2
 table2_columns = ['Region', 'PDF missed(late 4 eye/stamping)', 'Error Count']
 table2 = df[table2_columns].groupby('Region').sum().reset_index()
-table2_total = table2.sum(numeric_only=True)
+table2_total = pd.DataFrame([table2.sum(numeric_only=True)], columns=table2.columns)
 table2_total['Region'] = 'Total'
-table2 = table2.append(table2_total, ignore_index=True)
+table2 = pd.concat([table2, table2_total], ignore_index=True)
 
 # Convert tables to HTML
 html_table1 = table1.to_html(index=False)
