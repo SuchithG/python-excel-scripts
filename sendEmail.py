@@ -58,11 +58,20 @@ smtp_port = 587
 username = "your-email@outlook.com"
 password = "your-password"
 
+# Define lists of recipients
+to_recipients = ["recipient1@example.com", "recipient2@example.com"]
+cc_recipients = ["cc1@example.com", "cc2@example.com"]
+bcc_recipients = ["bcc1@example.com", "bcc2@example.com"]
+
+# Combine all recipients for the sendmail function
+all_recipients = to_recipients + cc_recipients + bcc_recipients
+
 # Create message
 message = MIMEMultipart("alternative")
 message["Subject"] = "Email with Tables from Python"
 message["From"] = username
-message["To"] = "recipient@example.com"
+message["To"] = ", ".join(to_recipients)
+message["CC"] = ", ".join(cc_recipients)
 
 # Email body with tables
 html = f"""
