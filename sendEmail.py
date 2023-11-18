@@ -4,20 +4,25 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # Read the Excel file
-excel_file = "path/to/your/excel/file.xlsx"
-df = pd.read_excel(excel_file)
+df = pd.read_excel('path/to/your/excel/file.xlsx')
 
 # Create Table 1
-table1_columns = ["Region", "Setup", "Amend", "Review", "Closure", "Exceptions", "PDF Name"]
-table1 = df[table1_columns].copy()
-table1_total = table1.groupby("Region").sum().reset_index()
-table1_html = table1_total.to_html(index=False)
+table1_columns = ['Region', 'Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
+table1 = df[table1_columns].groupby('Region').sum().reset_index()
+table1_total = table1.sum(numeric_only=True)
+table1_total['Region'] = 'Total'
+table1 = table1.append(table1_total, ignore_index=True)
 
 # Create Table 2
-table2_columns = ["Region", "PDF missed(late 4 eye/stamping)", "Error Count"]
-table2 = df[table2_columns].copy()
-table2_total = table2.groupby("Region").sum().reset_index()
-table2_html = table2_total.to_html(index=False)
+table2_columns = ['Region', 'PDF missed(late 4 eye/stamping)', 'Error Count']
+table2 = df[table2_columns].groupby('Region').sum().reset_index()
+table2_total = table2.sum(numeric_only=True)
+table2_total['Region'] = 'Total'
+table2 = table2.append(table2_total, ignore_index=True)
+
+# Convert tables to HTML
+html_table1 = table1.to_html(index=False)
+html_table2 = table2.to_html(index=False)
 
 # Email settings
 smtp_server = "smtp.office365.com"
@@ -27,25 +32,25 @@ password = "your-password"
 
 # Create message
 message = MIMEMultipart("alternative")
-message["Subject"] = "Tables from Excel in Email Body"
+message["Subject"] = "Email with Tables from Python"
 message["From"] = username
 message["To"] = "recipient@example.com"
 
-# Email body with HTML tables
+# Email body with tables
 html = f"""
 <html>
+  <head></head>
   <body>
     <p>Hi,<br>
-       Please find below the tables extracted from the Excel file:</p>
-    <h2>Table 1</h2>
-    {table1_html}
-    <h2>Table 2</h2>
-    {table2_html}
+       Please find below the required tables:<br>
+       <h3>Table 1:</h3>
+       {html_table1}
+       <h3>Table 2:</h3>
+       {html_table2}
+    </p>
   </body>
 </html>
 """
-
-# Attach HTML to email
 part = MIMEText(html, "html")
 message.attach(part)
 
