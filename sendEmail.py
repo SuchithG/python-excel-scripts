@@ -8,8 +8,9 @@ df = pd.read_excel('path/to/your/excel/file.xlsx')
 
 # Create Table 1
 table1_columns = ['Region', 'Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
-table1 = df[table1_columns].groupby('Region').sum().reset_index()
-table1_total = pd.DataFrame([table1.sum(numeric_only=True)], columns=table1.columns)
+# Group by 'Region' and count 'PDF Name'
+table1 = df[table1_columns].groupby('Region').agg({'PDF Name': 'count', 'Setup': 'sum', 'Amend': 'sum', 'Review': 'sum', 'Closure': 'sum', 'Exceptions': 'sum'}).reset_index()
+table1_total = pd.DataFrame([table1[['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']].sum()], columns=table1.columns[1:])
 table1_total['Region'] = 'Total'
 table1 = pd.concat([table1, table1_total], ignore_index=True)
 
