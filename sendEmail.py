@@ -20,7 +20,8 @@ table1_total = pd.DataFrame([table1[['Setup', 'Amend', 'Review', 'Closure', 'Exc
 table1_total['Region'] = 'Total'
 table1 = pd.concat([table1, table1_total], ignore_index=True)
 # Convert numeric columns to int
-table1 = convert_columns_to_int(table1, ['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name'])
+numeric_columns_table1 = ['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
+table1 = convert_columns_to_int(table1, numeric_columns_table1)
 
 
 # Create Table 2
@@ -30,7 +31,8 @@ table2_total = pd.DataFrame([table2.sum(numeric_only=True)], columns=table2.colu
 table2_total['Region'] = 'Total'
 table2 = pd.concat([table2, table2_total], ignore_index=True)
 # Convert numeric columns to int
-table2 = convert_columns_to_int(table2, ['PDF missed(late 4 eye/stamping)', 'Error Count'])
+numeric_columns_table2 = ['PDF missed(late 4 eye/stamping)', 'Error Count']
+table2 = convert_columns_to_int(table2, numeric_columns_table2)
 
 # Convert tables to HTML
 html_table1 = table1.to_html(index=False)
