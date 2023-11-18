@@ -27,6 +27,7 @@ table1 = convert_columns_to_int(table1, numeric_columns_table1)
 # Create Table 2
 table2_columns = ['Region', 'PDF missed(late 4 eye/stamping)', 'Error Count']
 table2 = df[table2_columns].groupby('Region').sum().reset_index()
+table2.rename(columns={'PDF missed(late 4 eye/stamping)': 'PDF SLA Missed Count', 'Error Count': '4-eye Error Count'}, inplace=True)  # Rename the columns
 table2_total = pd.DataFrame([table2.sum(numeric_only=True)], columns=table2.columns)
 table2_total['Region'] = 'Total'
 table2 = pd.concat([table2, table2_total], ignore_index=True)
@@ -53,7 +54,16 @@ message["To"] = "recipient@example.com"
 # Email body with tables
 html = f"""
 <html>
-  <head></head>
+  <head>
+    <style>
+      table, th, td {{
+        border: 1px solid black;
+        border-collapse: collapse;
+        text-align: center; /* Center-align text */
+        padding: 5px; /* Optional: to add some padding inside cells */
+      }}
+    </style>
+  </head>
   <body>
     <p>Hi,<br>
        Please find below the required tables:<br>
