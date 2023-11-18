@@ -12,15 +12,27 @@ def convert_columns_to_int(df, columns):
         df[col] = df[col].fillna(0).astype(int)
     return df
 
-# Create Table 1
+# Create Table 1 with 'PDF Name' aggregated as 'PDF Count'
 table1_columns = ['Region', 'Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
-# Group by 'Region' and count 'PDF Name'
-table1 = df[table1_columns].groupby('Region').agg({'PDF Name': 'count', 'Setup': 'sum', 'Amend': 'sum', 'Review': 'sum', 'Closure': 'sum', 'Exceptions': 'sum'}).reset_index()
-table1_total = pd.DataFrame([table1[['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']].sum()], columns=table1.columns[1:])
+table1 = df[table1_columns].groupby('Region').agg({
+    'Setup': 'sum', 
+    'Amend': 'sum', 
+    'Review': 'sum', 
+    'Closure': 'sum', 
+    'Exceptions': 'sum', 
+    'PDF Name': 'count'  # Counting the occurrences of 'PDF Name'
+}).reset_index()
+table1.rename(columns={'PDF Name': 'PDF Count'}, inplace=True)  # Rename the column
+
+# Calculate total row
+table1_total = pd.DataFrame([table1[['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Count']].sum()], columns=table1.columns[1:])
 table1_total['Region'] = 'Total'
+
+# Append the total row
 table1 = pd.concat([table1, table1_total], ignore_index=True)
+
 # Convert numeric columns to int
-numeric_columns_table1 = ['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Name']
+numeric_columns_table1 = ['Setup', 'Amend', 'Review', 'Closure', 'Exceptions', 'PDF Count']
 table1 = convert_columns_to_int(table1, numeric_columns_table1)
 
 
@@ -31,8 +43,9 @@ table2.rename(columns={'PDF missed(late 4 eye/stamping)': 'PDF SLA Missed Count'
 table2_total = pd.DataFrame([table2.sum(numeric_only=True)], columns=table2.columns)
 table2_total['Region'] = 'Total'
 table2 = pd.concat([table2, table2_total], ignore_index=True)
+
 # Convert numeric columns to int
-numeric_columns_table2 = ['PDF missed(late 4 eye/stamping)', 'Error Count']
+numeric_columns_table2 = ['PDF SLA Missed Count', '4-eye Error Count']
 table2 = convert_columns_to_int(table2, numeric_columns_table2)
 
 # Convert tables to HTML
