@@ -22,12 +22,21 @@ output_df = grouped.size().reset_index(name='Count')
 output_df['Status_Count'] = output_df['Count']
 output_df['Volume'] = output_df['Count']
 
+# Group by 'Month/Year' and 'PRIORITY' and count distinct 'ATTR_NME'
+grouped_by_month_priority = df.groupby(['Month/Year', 'PRIORITY'])['ATTR_NME'].nunique().reset_index(name='Priority_Count')
+
 # Now to replicate the summarization from Alteryx for distinct counts of ATTR_NME
 # Group by MSG_TYP and count distinct ATTR_NME
 distinct_attr = df.groupby('MSG_TYP')['ATTR_NME'].nunique().reset_index(name='CountDistinct_ATTR_NME')
 
-# Print the results
-print("Grouped DataFrame:")
+# Print the grouped DataFrame with counts for each group
+print("Grouped DataFrame by MSG_TYP, PRIORITY, STATUS, and Month/Year:")
 print(output_df)
+
+# Print the grouped DataFrame by Month/Year and PRIORITY with distinct counts of ATTR_NME
+print("\nGrouped DataFrame by Month/Year and PRIORITY with distinct counts of ATTR_NME:")
+print(grouped_by_month_priority)
+
+# Print the distinct count of ATTR_NME per MSG_TYP
 print("\nDistinct Count of ATTR_NME per MSG_TYP:")
 print(distinct_attr)
