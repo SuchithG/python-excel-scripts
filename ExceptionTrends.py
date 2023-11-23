@@ -5,10 +5,10 @@ file_path = 'path_to_your_excel_file.xlsx'  # Update this with the path to your 
 df = pd.read_excel(file_path, sheet_name='Q1 Deal')
 
 # Ensure the EFFECTIVE_DTE column is in datetime format
-df['EFFECTIVE_DTE'] = pd.to_datetime(df['EFFECTIVE_DTE'])
+df['CLOSE_DTE'] = pd.to_datetime(df['CLOSE_DTE'])
 
 # Extract Month/Year from EFFECTIVE_DTE
-df['Month/Year'] = df['EFFECTIVE_DTE'].dt.strftime('%b-%y')
+df['Month/Year'] = df['CLOSE_DTE'].dt.strftime('%b-%y')
 
 # Group by MSG_TYP, PRIORITY, STATUS, and Month/Year
 grouped = df.groupby(['MSG_TYP', 'PRIORITY', 'STATUS', 'Month/Year'])
