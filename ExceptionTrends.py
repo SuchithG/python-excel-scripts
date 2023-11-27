@@ -2,6 +2,11 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 
+def get_opposite_status(existing_status):
+    if 'CLOSED' in existing_status:
+        return 'OPEN'
+    return 'CLOSED'
+
 previous_month_date = (datetime.now().replace(day=1) - timedelta(days=1))
 previous_month_name = previous_month_date.strftime("%b_%Y").upper()
 
@@ -141,6 +146,43 @@ ordered_columns = [
     'PRIORITY', 'Volume', 'Total', 'Month/Year', 'STATUS', 'Priority Count'
 ]
 final_combined_df = final_combined_df[ordered_columns]
+
+# Get unique combinations of MSG_TYP and PRIORITY
+msg_priority_combinations = final_combined_df[['MSG_TYP', 'PRIORITY']].drop_duplicates()
+
+# Create a DataFrame to hold missing rows
+missing_rows = []
+
+# Iterate over each MSG_TYP
+for msg_typ in final_combined_df['MSG_TYP'].unique():
+    # Filter the DataFrame for the current MSG_TYP
+    df_msg_typ = final_combined_df[final_combined_df['MSG_TYP'] == msg_typ]
+
+    # Check for each priority
+    for priority in ['P1', 'P2', 'P3']:
+        # Filter the DataFrame for the current priority
+        df_priority = df_msg_typ[df_msg_typ['PRIORITY'] == priority]
+
+        # If there are less than two statuses for the priority, we need to add the missing ones
+        if len(df_priority) < 2:
+            # Find which status is missing
+            existing_statuses = df_priority['STATUS'].tolist()
+            opposite_status = get_opposite_status(existing_statuses)
+
+            # Add the missing status
+            for status in ['CLOSED', 'OPEN']:
+                if status not in existing_statuses:
+                    # Create a new row with the missing status and a Volume of 0
+                    # Other column values are taken from one of the existing rows for consistency
+                    new_row = df_priority.iloc[0].copy()
+                    new_row['STATUS'] = status
+                    new_row['Volume'] = 0
+                    new_row['Status_Count'] = 0  # Assuming Status_Count should also be 0
+                    missing_rows.append(new_row)
+
+# Append missing_rows to the final_combined_df
+if missing_rows:
+    final_combined_df = final_combined_df.append(missing_rows, ignore_index=True)
 
 # Specify the output folder path and file name
 output_folder_path = '/path/to/your/output/folder/'
