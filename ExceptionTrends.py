@@ -140,10 +140,13 @@ full_combined_df_tranche['Total'] = total_value_tranche
 final_df_tranche = full_combined_df_tranche[['Exception trend', 'MSG_TYP', 'Message Type Group', 'Attribute Count', 
                              'PRIORITY', 'Volume', 'Total', 'Month/Year', 'STATUS', 'Priority Count']]
 
-# Define the path for the output Excel file
-output_file_path = 'output_data_analysis.xlsx'  # Replace with your desired file path
+# Combine final_df and final_df_tranche into one dataframe
+combined_final_df = pd.concat([final_df, final_df_tranche], axis=0)
 
-# Save the final dataframe to an Excel file
-final_df.to_excel(output_file_path, index=False)
+# Define the path for the combined output Excel file
+combined_output_file_path = 'combined_output_data_analysis.xlsx'  # Replace with your desired file path
 
-print(f"Data saved to {output_file_path}")
+# Save the combined dataframe to an Excel file
+combined_final_df.to_excel(combined_output_file_path, index=False)
+
+print(f"Combined data saved to {combined_output_file_path}")
