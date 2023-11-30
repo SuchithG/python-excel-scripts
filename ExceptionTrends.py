@@ -1,13 +1,15 @@
 import pandas as pd
 from itertools import product
 from datetime import datetime, timedelta
+import glob
+import os
 
 # Define previous month details
 previous_month_date = (datetime.now().replace(day=1) - timedelta(days=1))
 previous_month_name = previous_month_date.strftime("%b_%Y").upper()
 
 # Load the data from the Excel file
-file_path = 'path_to_your_excel_file.xlsx'  # Replace with the actual path
+file_path = f"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Exception_Trends_Monthly_Inputs/uRDSandFDW_{previous_month_name}.xlsx"  # Replace with the actual path
 df_q1 = pd.read_excel(file_path, sheet_name='Q1 Deal')
 df_q2 = pd.read_excel(file_path, sheet_name='Q2 Deal', usecols=['COUNT(*)'])
 
@@ -144,9 +146,43 @@ final_df_tranche = full_combined_df_tranche[['Exception trend', 'MSG_TYP', 'Mess
 combined_final_df = pd.concat([final_df, final_df_tranche], axis=0)
 
 # Define the path for the combined output Excel file
-combined_output_file_path = 'combined_output_data_analysis.xlsx'  # Replace with your desired file path
+combined_output_file_name = f"ExceptionTrends_{previous_month_name}_script_output.xlsx"
 
-# Save the combined dataframe to an Excel file
+combined_output_file_path = f"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Exception_Trends_Monthly/{combined_output_file_name}"
+
 combined_final_df.to_excel(combined_output_file_path, index=False)
+print(f"Combined final_df and final_df_tranche saved to {combined_output_file_name}")
 
-print(f"Combined data saved to {combined_output_file_path}")
+# Define the folder path where the Excel files are located
+folder_path = r"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Exception_Trends_Monthly/"
+
+# Use glob to get all the excel files in the folder
+excel_files = glob.glob(folder_path + '*.xlsx')
+
+# Initialize an empty list to hold dataframes
+all_dataframes = []
+
+# Loop through the Excel files and append them to the list
+for file in excel_files:
+    # Determine the engine based on file extension
+    _, file_extension = os.path.splitext(file)
+    if file_extension == '.xlsx':
+        engine = 'openpyxl'
+    elif file_extension == '.xls':
+        engine = 'xlrd'
+    else:
+        continue  # Skip non-Excel files
+
+    df = pd.read_excel(file, engine=engine)
+    all_dataframes.append(df)
+
+# Concatenate all dataframes in the list
+combined_excel_df = pd.concat(all_dataframes, ignore_index=True)
+
+# Define the path for the output Excel file
+output_file_path = r"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Tableau REF/ExceptionTrends Tableau Input/ExceptionTrends_UAT.xlsx" 
+
+# Save the combined dataframe from all Excel files into one file
+combined_excel_df.to_excel(output_file_path, index=False)
+
+print(f"All Excel files combined and saved to {output_file_path}")
