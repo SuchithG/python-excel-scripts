@@ -16,7 +16,8 @@ def get_previous_working_day():
     while True:
         today -= one_day
         if today.weekday() < 5:  # Monday to Friday (0 to 4)
-            return today.strftime('%m/%d/%Y')
+        #if today.weekday() < 6:  # Monday to Saturday (0 to 4)
+            return today.strftime('%b-%y')
 
 previous_working_day = get_previous_working_day()
 print(f"Filtering data for the previous working day: {previous_working_day}")
@@ -54,7 +55,7 @@ else:
                     df['Actual Date of upload'] = pd.to_datetime(df['Actual Date of upload']).dt.strftime("%Y-%m-%d")
                     
                     # Keep only rows where necessary columns are not null
-                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == get_previous_working_day)]
+                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == previous_working_day)]
                     
                     if not df.empty:
                         dfs.append(df)
