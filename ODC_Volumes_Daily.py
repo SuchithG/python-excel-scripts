@@ -16,6 +16,7 @@ def get_previous_working_day():
     while True:
         today -= one_day
         if today.weekday() < 5:  # Monday to Friday (0 to 4)
+        #if today.weekday() < 6:  # Monday to Saturday (0 to 4)
             return today.strftime('%m/%d/%Y')
 
 previous_working_day = get_previous_working_day()
