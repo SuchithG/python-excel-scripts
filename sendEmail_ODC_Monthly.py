@@ -37,7 +37,7 @@ def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
 def add_total_row(df, columns_to_sum):
     # Calculate the total for each column and create a total row
     total_row = {column: df[column].sum() if column in columns_to_sum else '' for column in df.columns}
-    total_row[df[columns[0]]] = 'Total' # Set 'Total' label in the first column 
+    total_row[df.columns[0]] = 'Total' # Set 'Total' label in the first column 
     # Create a DataFrame of the total row
     total_row_df = pd.DataFrame([total_row])
     # Concatenated the total row DataFrame to the original DataFrame
@@ -101,7 +101,7 @@ def process_and_send_email_with_tables():
     </head>
         <body>
             <p >Hi,</p>
-            <p>Enclosed ia the ODC Monthly Volumes for previous month.</p>
+            <p>Enclosed is the ODC Monthly Volumes for the month - {previous_month_name}.</p>
             <p><b>Total count</b><p>
             {table_html_1}
             <p><b>Total count</b></p>
@@ -115,7 +115,7 @@ def process_and_send_email_with_tables():
     # Send the email with all tables
     recipients = [""]
     cc_recipients = [""]
-    subject = "ODC Monthly Volumes | Script Testing"
+    subject = f"ODC Monthly Volumes - {previous_month_name} | Script Testing"
     return send_email_with_table(subject, body, recipients, cc_recipients, output_file_name)
 
 # Execute the process and print the result
