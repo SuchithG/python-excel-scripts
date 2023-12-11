@@ -60,6 +60,18 @@ def process_and_send_email_with_tables():
     # Load and filter data
     df = pd.read_excel(input_file_name)
 
+    # Read the "Summary sheet" from the separate Excel file
+    summary_df = pd.read_excel("path_to_second_excel_file.xlsx", sheet_name="Summary sheet")
+    
+    # Convert 'Date' column to datetime and filter for the previous month
+    summary_df['Date'] = pd.to_datetime(summary_df['Date'], format='%d-%b-%y')
+    summary_df_filtered = summary_df[summary_df['Date'].dt.month == last_day_of_previous_month.month]
+    summary_df_filtered = summary_df_filtered[summary_df_filtered['Date'].dt.year == last_day_of_previous_month.year]
+
+    # Calculate the BOT Volumes
+    columns_to_sum = ['Asset Class/Reports', 'Application', 'Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']
+    bot_volumes = summary_df_filtered[columns_to_sum].sum().sum()
+
     # Convert 'Date' column to datetime format
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
 
@@ -83,9 +95,29 @@ def process_and_send_email_with_tables():
     columns_to_sum = ['PDF SLA Missed Count', '4-eye Error Count']
     aggregated_data_with_total_2 = add_total_row(aggregated_data_2, columns_to_sum)
 
+     # Aggregation for the new table
+    total_pdf_count = len(unique_pdf_df['PDF Name'])
+    total_security_setup = df['Setup'].sum()
+    total_security_amendments = df[['Amend', 'Closure', 'Deletion']].sum().sum()  # Sum across columns, then total sum
+    total_security_review = df['Review'].sum()
+    total_espear_exceptions = df['Exceptions'].sum()
+
+    # Creating a DataFrame for the new table
+    data_for_new_table = {
+        'PDF Count': [total_pdf_count],
+        'Security Setup': [total_security_setup],
+        'Security Amendments': [total_security_amendments],
+        'Security Review': [total_security_review],
+        'Espear Exceptions': [total_espear_exceptions],
+        'Bot Volumes': [bot_volumes]
+    }
+    new_table_df = pd.DataFrame(data_for_new_table)
+
+
     # Generate HTML tables for both
     table_html_1 = aggregated_data_with_total_1.to_html(index=False) if not aggregated_data_1.empty else "<p>No data available</p>"
     table_html_2 = aggregated_data_with_total_2.to_html(index=False) if not aggregated_data_2.empty else "<p>No data available</p>"
+    table_html_new = new_table_df.to_html(index=False)
 
     body = f"""
     <html>
@@ -106,6 +138,8 @@ def process_and_send_email_with_tables():
             {table_html_1}
             <p><b>Total count</b></p>
             {table_html_2}
+            <p><b>Total count</b></p>
+            {table_html_new}
             <p>Thanks and Regards,</p>
             <p>Suchith</p>
         </body>
