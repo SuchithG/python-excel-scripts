@@ -48,8 +48,17 @@ def add_total_row(df, columns_to_sum):
     return df_with_total 
 
 def process_and_send_email_with_tables():
+    current_date = datetime.now()
+    first_day_of_current_month = datetime(current_date.year, current_date.month, 1)
+    last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+    previous_month_name = last_day_of_previous_month.strftime("%b-%y")  # Format: Nov-23
+
+    # Construct file names
+    input_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
+    output_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
+
     # Load and filter data
-    df = pd.read_excel("/path/to/your/excel_file.xlsx")
+    df = pd.read_excel(input_file_name)
 
     # Convert 'Date' column to datetime format
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
@@ -107,7 +116,7 @@ def process_and_send_email_with_tables():
     recipients = [""]
     cc_recipients = [""]
     subject = "ODC Monthly Volumes | Script Testing"
-    return send_email_with_table(subject, body, recipients, cc_recipients, "/path/to/excel_workbook.xlsx")
+    return send_email_with_table(subject, body, recipients, cc_recipients, output_file_name)
 
 # Execute the process and print the result
 result = process_and_send_email_with_tables()
