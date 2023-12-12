@@ -48,6 +48,7 @@ def add_total_row(df, columns_to_sum):
     return df_with_total 
 
 def process_and_send_email_with_tables():
+    # Determine the previous month and year for file naming and data filtering
     current_date = datetime.now()
     first_day_of_current_month = datetime(current_date.year, current_date.month, 1)
     last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
@@ -57,20 +58,27 @@ def process_and_send_email_with_tables():
     input_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
     output_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
 
-    # Load and filter data
+    # Load data from the primary Excel file
     df = pd.read_excel(input_file_name)
 
-    # Read the "Summary sheet" from the separate Excel file
-    summary_df = pd.read_excel("path_to_second_excel_file.xlsx", sheet_name="Summary sheet")
-    
-    # Convert 'Date' column to datetime and filter for the previous month
-    summary_df['Date'] = pd.to_datetime(summary_df['Date'], format='%d-%b-%y')
-    summary_df_filtered = summary_df[summary_df['Date'].dt.month == last_day_of_previous_month.month]
-    summary_df_filtered = summary_df_filtered[summary_df_filtered['Date'].dt.year == last_day_of_previous_month.year]
+    # Load and filter data from the secondary "Summary Sheet"
+    summary_df = pd.read_excel("path_to_second_excel_file.xlsx", sheet_name="Summary Sheet")
+    summary_df['Date'] = pd.to_datetime(summary_df['Date'])
+
+    # Filter for the specific month and year
+    summary_df_filtered = summary_df[(summary_df['Date'].dt.month == 11) &  # Example month
+                                     (summary_df['Date'].dt.year == 2023)]  # Example year
+    if summary_df_filtered.empty:
+        print("No data for November 2023.")
+    else:
+        print("Data available for November 2023.")
 
     # Calculate the BOT Volumes
-    columns_to_sum = ['Asset Class/Reports', 'Application', 'Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']
-    bot_volumes = summary_df_filtered[columns_to_sum].sum().sum()
+    columns_to_sum_bot = ['Asset Class/Reports', 'Application', 'Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']
+    bot_volumes = summary_df_filtered[columns_to_sum_bot].sum().sum()
+
+    # Remove duplicate entries in 'PDF Name'
+    unique_pdf_df = df.drop_duplicates(subset=['PDF Name'])
 
     # Convert 'Date' column to datetime format
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
@@ -84,7 +92,7 @@ def process_and_send_email_with_tables():
         'PDF Name': 'count'
     }).reset_index()
     aggregated_data_1.rename(columns={'PDF Name': 'PDF Count'}, inplace=True)
-    columns_to_sum = ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', 'PDF Name']
+    columns_to_sum = ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', 'PDF Count']
     aggregated_data_with_total_1 = add_total_row(aggregated_data_1, columns_to_sum)
 
     aggregated_data_2 = df.groupby(['Region']).agg({
@@ -113,6 +121,9 @@ def process_and_send_email_with_tables():
     }
     new_table_df = pd.DataFrame(data_for_new_table)
 
+    # Convert numeric values to integers in new_table_df
+    for column in data_for_new_table:
+        new_table_df[column] = pd.to_numeric(new_table_df[column], errors='coerce').fillna(0).astype(int)
 
     # Generate HTML tables for both
     table_html_1 = aggregated_data_with_total_1.to_html(index=False) if not aggregated_data_1.empty else "<p>No data available</p>"
