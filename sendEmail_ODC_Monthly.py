@@ -52,6 +52,8 @@ def process_and_send_email_with_tables():
     current_date = datetime.now()
     first_day_of_current_month = datetime(current_date.year, current_date.month, 1)
     last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+    previous_month = last_day_of_previous_month.month
+    previous_year = last_day_of_previous_month.year
     previous_month_name = last_day_of_previous_month.strftime("%b-%y")  # Format: Nov-23
 
     # Construct file names
@@ -66,8 +68,8 @@ def process_and_send_email_with_tables():
     summary_df['Date'] = pd.to_datetime(summary_df['Date'])
 
     # Filter for the specific month and year
-    summary_df_filtered = summary_df[(summary_df['Date'].dt.month == 11) &  # Example month
-                                     (summary_df['Date'].dt.year == 2023)]  # Example year
+    summary_df_filtered = summary_df[(summary_df['Date'].dt.month == previous_month) &  # Example month
+                                     (summary_df['Date'].dt.year == previous_year)]  # Example year
     if summary_df_filtered.empty:
         print("No data for November 2023.")
     else:
