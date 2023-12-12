@@ -1,33 +1,48 @@
 import pandas as pd
-from datetime import datetime, timedelta
 
-# Get the current date
-current_date = datetime.now()
+# Load the data from each sheet into a DataFrame
+def load_data(sheet_name):
+    df = pd.read_excel('your_file.xlsx', sheet_name=sheet_name)
+    return df
 
-# Get the first day of the current month
-first_day_of_current_month = current_date.replace(day=1)
+# Calculate the sum of the "COUNT(*)" column for the given DataFrame
+def calculate_closed_count(df):
+    return df['COUNT(*)'].sum()
 
-# Calculate the last day of the previous month
-last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+# Replace 'your_file.xlsx' with the path to your actual Excel file
+file_path = 'your_file.xlsx'
 
-# Get the month and year of the previous month
-previous_month = last_day_of_previous_month.strftime('%b_%Y')
+# Calculate closed counts for each loan type
+sheets_and_loans = {
+    'Line 180': 'Loans',
+    'Line 1280': 'FI',
+    'Line 655': 'Equity',
+    'Line 2020': 'LD'
+}
 
-# Construct the file name
-file_name = f"iRDS_SQL_Query_{previous_month}.xlsx"
+closed_counts = {}
 
-# Load the Excel file
-xls = pd.ExcelFile(file_name)
+for sheet, loan_type in sheets_and_loans.items():
+    df = load_data(sheet)
+    closed_count = calculate_closed_count(df)
+    closed_counts[loan_type] = closed_count
 
-# Assuming the first sheet is 'Table1' containing the data for the first table
-# Change these names according to your Excel file
-table1 = pd.read_excel(xls, 'Table1')
+# Create a DataFrame for the closed count data
+closed_counts_df = pd.DataFrame(list(closed_counts.items()), columns=['Loan Type', 'Closed Count'])
 
-# Calculate 'Total Nov exception' by summing up values across columns
-total_nov_exception = table1[['Equity', 'Loans', 'LD', 'FI']].sum(axis=1)
+# Display the DataFrame as a styled HTML table
+styled_table = closed_counts_df.style.set_table_styles(
+    [{
+        'selector': 'th',
+        'props': [('background-color', '#FFFF00'), ('color', 'black')]
+    }]
+).set_properties(**{
+    'background-color': 'white',
+    'color': 'black',
+    'border-color': 'black',
+    'border-style' :'solid',
+    'border-width': '1px'
+}).set_caption("Closed Counts")
 
-# Add 'Total' column to the table
-table1['Total'] = total_nov_exception
-
-# Display the modified table with the 'Total' column
-print(table1)
+# Display styled table
+styled_table
