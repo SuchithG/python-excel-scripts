@@ -13,37 +13,23 @@ def calculate_closed_count(df):
     return df['COUNT(*)'].sum()
 
 def calculate_open_assign_count(df, next_month_date, sheet_name):
-    # Determine the count column name
-    if 'COUNT(*)' in df.columns:
-        count_column = 'COUNT(*)'
-    elif "COUNT('*')" in df.columns:
-        count_column = "COUNT('*')"
-    else:
-        raise ValueError(f"Count column not found in the sheet {sheet_name}")
+    # Determine the correct count column name
+    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
 
-    # Check for the presence of 'NOTFCN_ID' and 'NOTFCN_STAT_TYP' columns
-    if 'NOTFCN_STAT_TYP' in df.columns and 'NOTFCN_ID' in df.columns:
-        # Filter for 'OPEN' and 'CLOSED' statuses
+    if 'NOTFCN_ID' in df.columns and 'NOTFCN_STAT_TYP' in df.columns:
+        # Create a filtered DataFrame that only includes 'OPEN' and 'CLOSED' statuses
         filtered_df = df[df['NOTFCN_STAT_TYP'].isin(['OPEN', 'CLOSED'])]
 
-        # If you need to consider 'CLOSED' status for a specific date, filter those as well
-        # This assumes 'TRUNC(LST_NOTFCN_TMS)' is the correct column name for filtering by date
+        # If there is a need to consider only 'CLOSED' statuses for the next month, apply additional filtering
         if 'TRUNC(LST_NOTFCN_TMS)' in df.columns:
-            filtered_df = filtered_df[
-                (filtered_df['NOTFCN_STAT_TYP'] != 'CLOSED') |
-                (pd.to_datetime(filtered_df['TRUNC(LST_NOTFCN_TMS)']).dt.to_period('M') == next_month_date.to_period('M'))
-            ]
-        
-        # Sum the count column for each unique 'NOTFCN_ID'
-        total_count = filtered_df.groupby('NOTFCN_ID')[count_column].sum().reset_index()[count_column].sum()
-        return total_count
+            next_month_filter = pd.to_datetime(df['TRUNC(LST_NOTFCN_TMS)']).dt.to_period('M') == next_month_date.to_period('M')
+            filtered_df = filtered_df[(filtered_df['NOTFCN_STAT_TYP'] == 'OPEN') | ((filtered_df['NOTFCN_STAT_TYP'] == 'CLOSED') & next_month_filter)]
+
+        # Group by 'NOTFCN_ID' to get unique counts and then sum the count column
+        unique_counts = filtered_df.groupby('NOTFCN_ID')[count_column].nunique().sum()
+        return unique_counts
     else:
-        missing_columns = []
-        if 'NOTFCN_STAT_TYP' not in df.columns:
-            missing_columns.append('NOTFCN_STAT_TYP')
-        if 'NOTFCN_ID' not in df.columns:
-            missing_columns.append('NOTFCN_ID')
-        raise ValueError(f"Required columns {missing_columns} not found in sheet {sheet_name}")
+        raise ValueError(f"Required columns are not found in sheet {sheet_name}")
 
 
 # Replace with your actual file path
