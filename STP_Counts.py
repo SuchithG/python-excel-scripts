@@ -1,19 +1,38 @@
 import pandas as pd
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
-# Load the data from each sheet into a DataFrame
-def load_data(sheet_name):
-    df = pd.read_excel('your_file.xlsx', sheet_name=sheet_name)
+def load_data(file_path, sheet_name):
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df.columns = df.columns.str.strip()  # Strip whitespace from column names
+    print(f"Loaded sheet: {sheet_name} with columns: {df.columns.tolist()}")
     return df
 
-# Calculate the sum of the "COUNT(*)" column for the given DataFrame
 def calculate_closed_count(df):
     return df['COUNT(*)'].sum()
 
-# Replace 'your_file.xlsx' with the path to your actual Excel file
+def calculate_open_assign_count(df, next_month_date, sheet_name):
+    if 'NOTFCN_STAT_TYP' in df.columns:
+        # Filter for 'OPEN' and 'CLOSED' statuses, and concatenate the results
+        filtered_df = df[df['NOTFCN_STAT_TYP'].isin(['OPEN', 'CLOSED'])]
+        # Further filter for 'CLOSED' status where 'TRUNC(LST_NOTFCN_TMS)' is in the next month
+        closed_next_month = filtered_df[
+            (filtered_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
+            (pd.to_datetime(filtered_df['TRUNC(LST_NOTFCN_TMS)']).dt.to_period('M') == next_month_date.to_period('M'))
+        ]
+        # Combine the counts for 'OPEN' status and 'CLOSED' status next month
+        total_count = filtered_df['COUNT(*)'].sum() + closed_next_month['COUNT(*)'].sum()
+        return total_count
+    else:
+        print(f"Column 'NOTFCN_STAT_TYP' not found in {sheet_name}")
+        return 0
+
+# Replace with your actual file path
 file_path = 'your_file.xlsx'
 
-# Calculate closed counts for each loan type
-sheets_and_loans = {
+# Closed counts
+sheets_and_loans_closed = {
     'Line 180': 'Loans',
     'Line 1280': 'FI',
     'Line 655': 'Equity',
@@ -21,28 +40,62 @@ sheets_and_loans = {
 }
 
 closed_counts = {}
-
-for sheet, loan_type in sheets_and_loans.items():
-    df = load_data(sheet)
+for sheet, loan_type in sheets_and_loans_closed.items():
+    df = load_data(file_path, sheet)
     closed_count = calculate_closed_count(df)
     closed_counts[loan_type] = closed_count
 
-# Create a DataFrame for the closed count data
-closed_counts_df = pd.DataFrame(list(closed_counts.items()), columns=['Loan Type', 'Closed Count'])
+# Open/Assign counts
+next_month_date = pd.Timestamp('2023-12-01')  # Set this to the next month date you're interested in
 
-# Display the DataFrame as a styled HTML table
-styled_table = closed_counts_df.style.set_table_styles(
-    [{
-        'selector': 'th',
-        'props': [('background-color', '#FFFF00'), ('color', 'black')]
-    }]
-).set_properties(**{
-    'background-color': 'white',
-    'color': 'black',
-    'border-color': 'black',
-    'border-style' :'solid',
-    'border-width': '1px'
-}).set_caption("Closed Counts")
+sheet_names_open_assign = {
+    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523'],
+    'FI': ['Line 1616', 'Line 1407', 'Line 1727', 'Line 1843'],
+    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088'],
+    'LD': ['Line 2104', 'Line 2261', 'Line 2325', 'Line 2389']
+}
 
-# Display styled table
-styled_table
+open_assign_counts = {}
+for loan_type, sheets in sheet_names_open_assign.items():
+    total_count = 0
+    for sheet in sheets:
+        df = load_data(file_path, sheet)
+        total_count += calculate_open_assign_count(df, next_month_date)
+    open_assign_counts[loan_type] = total_count
+
+# Creating a DataFrame for email content
+data_for_email = {
+    'Loan Type': [],
+    'Closed Count': [],
+    'Open/Assign Count': []
+}
+for loan_type in closed_counts:
+    data_for_email['Loan Type'].append(loan_type)
+    data_for_email['Closed Count'].append(closed_counts[loan_type])
+    data_for_email['Open/Assign Count'].append(open_assign_counts.get(loan_type, 0))
+
+email_df = pd.DataFrame(data_for_email)
+html_table = email_df.to_html(index=False)
+
+# Email setup (replace with your actual details)
+smtp_host = 'your_smtp_host'
+smtp_port = your_smtp_port
+username = 'your_username'
+password = 'your_password'
+sender_email = 'sender@example.com'
+recipient_email = 'recipient@example.com'
+
+# Email content
+msg = MIMEMultipart()
+msg['Subject'] = 'Loan Counts Table'
+msg['From'] = sender_email
+msg['To'] = recipient_email
+msg.attach(MIMEText(html_table, 'html'))
+
+# Send the email
+with smtplib.SMTP(smtp_host, smtp_port) as server:
+    server.starttls() 
+    server.login(username, password)
+    server.send_message(msg)
+
+print('Email sent!')
