@@ -13,20 +13,38 @@ def calculate_closed_count(df):
     return df['COUNT(*)'].sum()
 
 def calculate_open_assign_count(df, next_month_date, sheet_name):
-    if 'NOTFCN_STAT_TYP' in df.columns:
-        # Filter for 'OPEN' and 'CLOSED' statuses, and concatenate the results
+    # Determine the count column name
+    if 'COUNT(*)' in df.columns:
+        count_column = 'COUNT(*)'
+    elif "COUNT('*')" in df.columns:
+        count_column = "COUNT('*')"
+    else:
+        raise ValueError(f"Count column not found in the sheet {sheet_name}")
+
+    # Check for the presence of 'NOTFCN_ID' and 'NOTFCN_STAT_TYP' columns
+    if 'NOTFCN_STAT_TYP' in df.columns and 'NOTFCN_ID' in df.columns:
+        # Filter for 'OPEN' and 'CLOSED' statuses
         filtered_df = df[df['NOTFCN_STAT_TYP'].isin(['OPEN', 'CLOSED'])]
-        # Further filter for 'CLOSED' status where 'TRUNC(LST_NOTFCN_TMS)' is in the next month
-        closed_next_month = filtered_df[
-            (filtered_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
-            (pd.to_datetime(filtered_df['TRUNC(LST_NOTFCN_TMS)']).dt.to_period('M') == next_month_date.to_period('M'))
-        ]
-        # Combine the counts for 'OPEN' status and 'CLOSED' status next month
-        total_count = filtered_df['COUNT(*)'].sum() + closed_next_month['COUNT(*)'].sum()
+
+        # If you need to consider 'CLOSED' status for a specific date, filter those as well
+        # This assumes 'TRUNC(LST_NOTFCN_TMS)' is the correct column name for filtering by date
+        if 'TRUNC(LST_NOTFCN_TMS)' in df.columns:
+            filtered_df = filtered_df[
+                (filtered_df['NOTFCN_STAT_TYP'] != 'CLOSED') |
+                (pd.to_datetime(filtered_df['TRUNC(LST_NOTFCN_TMS)']).dt.to_period('M') == next_month_date.to_period('M'))
+            ]
+        
+        # Sum the count column for each unique 'NOTFCN_ID'
+        total_count = filtered_df.groupby('NOTFCN_ID')[count_column].sum().reset_index()[count_column].sum()
         return total_count
     else:
-        print(f"Column 'NOTFCN_STAT_TYP' not found in {sheet_name}")
-        return 0
+        missing_columns = []
+        if 'NOTFCN_STAT_TYP' not in df.columns:
+            missing_columns.append('NOTFCN_STAT_TYP')
+        if 'NOTFCN_ID' not in df.columns:
+            missing_columns.append('NOTFCN_ID')
+        raise ValueError(f"Required columns {missing_columns} not found in sheet {sheet_name}")
+
 
 # Replace with your actual file path
 file_path = 'your_file.xlsx'
