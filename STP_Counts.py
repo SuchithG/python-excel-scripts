@@ -12,23 +12,29 @@ def calculate_closed_count(df):
     count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
     return df[count_column].sum()
 
-def calculate_combined_unique_open_assign_count(df):
+def calculate_combined_unique_open_assign_count(file_path, sheets, next_month_date):
     combined_df = pd.DataFrame()
     for sheet in sheets:
         df = load_data(file_path, sheet)
         combined_df = pd.concat([combined_df, df], ignore_index=True)
 
-    combined_df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(combined_df['TRUNC(LST_NOTFCN_TMS)'])
-    open_condition = combined_df['NOTFCN_STAT_TYP'] == 'OPEN'
-    closed_condition = (
-        (combined_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
-        (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.month == next_month_date.month) &
-        (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.year == next_month_date.year)
-    )
+    # Determine the correct count column name
+    count_column = 'COUNT(*)' if 'COUNT(*)' in combined_df.columns else "COUNT('*')"
 
-    filtered_combined_df = combined_df[open_condition | closed_condition]
-    unique_count = filtered_combined_df['NOTFCN_ID'].nunique()
-    return unique_count
+    # Convert 'TRUNC(LST_NOTFCN_TMS)' to datetime
+    combined_df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(combined_df['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
+
+    # Apply filters
+    filtered_combined_df = combined_df[
+        (combined_df['NOTFCN_STAT_TYP'] == 'OPEN') |
+        ((combined_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
+         (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.month == next_month_date.month) &
+         (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.year == next_month_date.year))
+    ]
+
+    # Sum the count for unique NOTFCN_IDs
+    unique_counts = filtered_combined_df.drop_duplicates(subset='NOTFCN_ID')[count_column].sum()
+    return unique_counts
 
 
 # Replace with your actual file path
