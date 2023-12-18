@@ -6,31 +6,28 @@ from email.mime.text import MIMEText
 def load_data(file_path, sheet_name):
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     df.columns = df.columns.str.strip()  # Strip whitespace from column names
-    print(f"Loaded sheet: {sheet_name} with columns: {df.columns.tolist()}")
     return df
 
 def calculate_closed_count(df):
-    # Assuming 'COUNT(*)' or 'COUNT(*)' is the column with the count data
-    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else 'COUNT(\'*\')'
+    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
     return df[count_column].sum()
 
-def calculate_open_assign_count(df, next_month_date, sheet_name):
-    # Check for necessary columns
-    if 'NOTFCN_ID' not in df.columns or 'NOTFCN_STAT_TYP' not in df.columns:
-        raise ValueError(f"Required columns are not found in sheet {sheet_name}")
+def calculate_combined_unique_open_assign_count(df):
+    combined_df = pd.DataFrame()
+    for sheet in sheets:
+        df = load_data(file_path, sheet)
+        combined_df = pd.concat([combined_df, df], ignore_index=True)
 
-    # Filter for 'OPEN' or 'CLOSED' in the next month
-    df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(df['TRUNC(LST_NOTFCN_TMS)'])
-    open_condition = df['NOTFCN_STAT_TYP'] == 'OPEN'
+    combined_df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(combined_df['TRUNC(LST_NOTFCN_TMS)'])
+    open_condition = combined_df['NOTFCN_STAT_TYP'] == 'OPEN'
     closed_condition = (
-        (df['NOTFCN_STAT_TYP'] == 'CLOSED') &
-        (df['TRUNC(LST_NOTFCN_TMS)'].dt.month == next_month_date.month) &
-        (df['TRUNC(LST_NOTFCN_TMS)'].dt.year == next_month_date.year)
+        (combined_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
+        (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.month == next_month_date.month) &
+        (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.year == next_month_date.year)
     )
-    filtered_df = df[open_condition | closed_condition]
 
-    # Count unique NOTFCN_IDs
-    unique_count = filtered_df['NOTFCN_ID'].nunique()
+    filtered_combined_df = combined_df[open_condition | closed_condition]
+    unique_count = filtered_combined_df['NOTFCN_ID'].nunique()
     return unique_count
 
 
@@ -61,6 +58,7 @@ sheet_names_open_assign = {
     'LD': ['Line 2104', 'Line 2261', 'Line 2325', 'Line 2389']
 }
 
+'''
 open_assign_counts = {}
 for loan_type, sheets in sheet_names_open_assign.items():
     total_count = 0
@@ -68,6 +66,11 @@ for loan_type, sheets in sheet_names_open_assign.items():
         df = load_data(file_path, sheet)
         total_count += calculate_open_assign_count(df, next_month_date, sheet)
     open_assign_counts[loan_type] = total_count
+'''
+
+# Calculate closed and open/assign counts
+closed_counts = {loan_type: calculate_closed_count(load_data(file_path, sheet)) for sheet, loan_type in sheets_and_loans_closed.items()}
+open_assign_counts = {loan_type: calculate_combined_unique_open_assign_count(file_path, sheets, next_month_date) for loan_type, sheets in sheet_names_open_assign.items()}
 
 # Creating a DataFrame for email content
 data_for_email = {
