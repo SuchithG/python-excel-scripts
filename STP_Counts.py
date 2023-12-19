@@ -148,7 +148,7 @@ email_df = pd.DataFrame(data_for_email)
 html_table = email_df.to_html(index=False)
 
 # Combine both tables' HTML content
-combined_html_table = html_table + "<br><br>" + open_ageing_breaks_html
+combined_html_table = f"{html_table}<br><br>{open_ageing_breaks_html}"
 
 # Debug print
 print("Combined HTML Table:\n", combined_html_table)
@@ -162,11 +162,14 @@ sender_email = 'sender@example.com'
 recipient_email = 'recipient@example.com'
 
 # Email content
-msg = MIMEMultipart()
-msg['Subject'] = 'Loan Counts Table'
+msg = MIMEMultipart('alternative')
+msg['Subject'] = 'Loan Counts and Ageing Breaks Tables'
 msg['From'] = sender_email
 msg['To'] = recipient_email
-msg.attach(MIMEText(combined_html_table, 'html'))
+
+# Attach the combined HTML content
+html_part = MIMEText(combined_html_table, 'html')
+msg.attach(html_part)
 
 # Send the email
 with smtplib.SMTP(smtp_host, smtp_port) as server:
