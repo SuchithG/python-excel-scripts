@@ -36,6 +36,37 @@ def calculate_combined_unique_open_assign_count(file_path, sheets, next_month_da
     unique_counts = filtered_combined_df.drop_duplicates(subset='NOTFCN_ID')[count_column].sum()
     return unique_counts
 
+def calculate_ageing_breaks(df, next_month_date):
+    # Determine the correct count column name
+    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
+    
+    # Calculate the age of each item based on 'TRUNC(NOTFCN_CRTE_TMS)' or 'TRUNC(LST_NOTFCN_TMS)'
+    df['Age Open'] = (next_month_date - pd.to_datetime(df['TRUNC(NOTFCN_CRTE_TMS)'])).dt.days
+    df['Age Closed'] = (next_month_date - pd.to_datetime(df['TRUNC(LST_NOTFCN_TMS)'])).dt.days
+
+    # Define the bins for the ageing categories
+    bins = [-1, 1, 7, 15, 30, 180, float('inf')]
+    labels = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
+    
+    # Initialize the counts for each category
+    ageing_breaks = {label: 0 for label in labels}
+
+    # Categorize open and closed items
+    for _, row in df.iterrows():
+        if row['NOTFCN_STAT_TYP'] == 'OPEN':
+            age = row['Age Open']
+        elif row['NOTFCN_STAT_TYP'] == 'CLOSED' and pd.to_datetime(row['TRUNC(LST_NOTFCN_TMS)']).month == next_month_date.month:
+            age = row['Age Closed']
+        else:
+            continue
+
+        # Increment the correct ageing category
+        for label, upper_bound in zip(labels, bins[1:]):
+            if age < upper_bound:
+                ageing_breaks[label] += row[count_column]
+                break
+
+    return ageing_breaks
 
 # Replace with your actual file path
 file_path = 'your_file.xlsx'
@@ -73,10 +104,29 @@ for loan_type, sheets in sheet_names_open_assign.items():
         total_count += calculate_open_assign_count(df, next_month_date, sheet)
     open_assign_counts[loan_type] = total_count
 '''
+# Function to convert the open ageing breaks data to a DataFrame and then to HTML
+def format_open_ageing_breaks_to_html(ageing_breaks):
+    # Convert the dictionary to a DataFrame
+    ageing_breaks_df = pd.DataFrame(ageing_breaks).T
+    ageing_breaks_df.columns = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
+    ageing_breaks_df.index.name = 'Loan Type'
+
+    # Convert the DataFrame to HTML
+    return ageing_breaks_df.to_html()
 
 # Calculate closed and open/assign counts
 closed_counts = {loan_type: calculate_closed_count(load_data(file_path, sheet)) for sheet, loan_type in sheets_and_loans_closed.items()}
 open_assign_counts = {loan_type: calculate_combined_unique_open_assign_count(file_path, sheets, next_month_date) for loan_type, sheets in sheet_names_open_assign.items()}
+
+# Calculate open ageing breaks for each loan type
+open_ageing_breaks = {}
+for loan_type, sheets in sheet_names_open_assign.items():
+    combined_df = pd.concat([load_data(file_path, sheet) for sheet in sheets], ignore_index=True)
+    open_ageing_breaks[loan_type] = calculate_ageing_breaks(combined_df, next_month_date)
+
+# Convert the open ageing breaks to HTML
+open_ageing_breaks_html = format_open_ageing_breaks_to_html(open_ageing_breaks)
+
 
 # Creating a DataFrame for email content
 data_for_email = {
@@ -92,6 +142,9 @@ for loan_type in closed_counts:
 email_df = pd.DataFrame(data_for_email)
 html_table = email_df.to_html(index=False)
 
+# Combine both tables' HTML content
+combined_html_table = html_table + "<br><br>" + open_ageing_breaks_html
+
 # Email setup (replace with your actual details)
 smtp_host = 'your_smtp_host'
 smtp_port = your_smtp_port
@@ -105,7 +158,7 @@ msg = MIMEMultipart()
 msg['Subject'] = 'Loan Counts Table'
 msg['From'] = sender_email
 msg['To'] = recipient_email
-msg.attach(MIMEText(html_table, 'html'))
+msg.attach(MIMEText(combined_html_table, 'html'))
 
 # Send the email
 with smtplib.SMTP(smtp_host, smtp_port) as server:
