@@ -124,9 +124,14 @@ for loan_type, sheets in sheet_names_open_assign.items():
     combined_df = pd.concat([load_data(file_path, sheet) for sheet in sheets], ignore_index=True)
     open_ageing_breaks[loan_type] = calculate_ageing_breaks(combined_df, next_month_date)
 
+# Debug print
+print("Open Ageing Breaks:", open_ageing_breaks)
+
 # Convert the open ageing breaks to HTML
 open_ageing_breaks_html = format_open_ageing_breaks_to_html(open_ageing_breaks)
 
+# Debug print
+print("Open Ageing Breaks HTML:\n", open_ageing_breaks_html)
 
 # Creating a DataFrame for email content
 data_for_email = {
@@ -144,6 +149,9 @@ html_table = email_df.to_html(index=False)
 
 # Combine both tables' HTML content
 combined_html_table = html_table + "<br><br>" + open_ageing_breaks_html
+
+# Debug print
+print("Combined HTML Table:\n", combined_html_table)
 
 # Email setup (replace with your actual details)
 smtp_host = 'your_smtp_host'
