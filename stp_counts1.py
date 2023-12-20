@@ -1,83 +1,67 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# Define the function to get the previous month's date range
-def get_previous_month_range(current_date):
-    first_day_of_current_month = current_date.replace(day=1)
-    last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
-    first_day_of_previous_month = last_day_of_previous_month.replace(day=1)
-    return first_day_of_previous_month, last_day_of_previous_month
+# Define the age categories
+age_categories = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
 
-# Define the function to categorize the notification age
-def categorize_notification(created_date, first_day_of_previous_month, last_day_of_previous_month):
-    if last_day_of_previous_month.day - 1 <= created_date.day <= last_day_of_previous_month.day:
+# Define the function to determine the age category
+def determine_age_category(creation_date, current_date):
+    age_days = (current_date - creation_date).days
+    if age_days <= 1:
         return '0-1 New'
-    elif (24 <= created_date.day <= 28) or (last_day_of_previous_month.day == 31 and 25 <= created_date.day <= 29):
+    elif 2 <= age_days <= 7:
         return '02-07 days'
-    elif (16 <= created_date.day <= 23) or (last_day_of_previous_month.day == 31 and 16 <= created_date.day <= 24):
+    elif 8 <= age_days <= 15:
         return '08-15 days'
-    elif 1 <= created_date.day <= 15:
+    elif 16 <= age_days <= 30:
         return '16-30 days'
-    elif (current_date - created_date).days <= 180:
+    elif 31 <= age_days <= 180:
         return '31-180 days'
     else:
         return '>180 days'
 
-# Define the function to process each sheet's data
-def process_sheet_data(sheet_data, current_date):
-    sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'])
-    first_day_of_previous_month, last_day_of_previous_month = get_previous_month_range(current_date)
+# Define the function to process the Excel file
+def process_excel(file_path, sheets, current_date):
+    # Initialize a dictionary to hold the sum of COUNT(*) for each unique NOTFCN_ID
+    sums_by_age_category = {category: 0 for category in age_categories}
+    # Initialize a set to keep track of processed NOTFCN_IDs to avoid double-counting
+    processed_notfcn_ids = set()
 
-    # Categorize notifications
-    sheet_data['Age_Category'] = sheet_data['TRUNC(NOTFCN_CRTE_TMS)'].apply(
-        lambda x: categorize_notification(x, first_day_of_previous_month, last_day_of_previous_month)
-    )
+    # Process each sheet
+    for sheet_name in sheets:
+        # Load data from the sheet
+        sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
 
-    # Count notifications in each category
-    category_counts = sheet_data['Age_Category'].value_counts().reset_index()
-    category_counts.columns = ['Age_Category', 'Count']
-    return category_counts
+        # Normalize date columns to datetime
+        sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'])
+        sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'])
 
-# Define the function to process all notifications and format the output
-def process_notifications(file_path, sheets, current_date):
-    all_counts = pd.DataFrame()
+        # Process each row
+        for index, row in sheet_data.iterrows():
+            notfcn_id = row['NOTFCN_ID']
+            notfcn_stat_typ = row['NOTFCN_STAT_TYP']
+            count = row['COUNT(*)']
 
-    for category, sheet_names in sheets.items():
-        for sheet_name in sheet_names:
-            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            sheet_counts = process_sheet_data(sheet_data, current_date)
-            sheet_counts['Category'] = category
-            all_counts = pd.concat([all_counts, sheet_counts])
+            # Check if the NOTFCN_ID has been processed already
+            if notfcn_id in processed_notfcn_ids:
+                continue
 
-    # Aggregate the counts for each category and age category
-    aggregate_counts = all_counts.groupby(['Category', 'Age_Category']).sum().unstack(fill_value=0)
-    aggregate_counts.columns = aggregate_counts.columns.droplevel(0)  # Drop the top level ('Count')
+            # For OPEN records or CLOSED records with last notification in the current month, determine the age category
+            if notfcn_stat_typ == 'OPEN' or (notfcn_stat_typ == 'CLOSED' and 
+                                             row['TRUNC(LST_NOTFCN_TMS)'].month == current_date.month and 
+                                             row['TRUNC(LST_NOTFCN_TMS)'].year == current_date.year):
+                age_category = determine_age_category(row['TRUNC(NOTFCN_CRTE_TMS)'], current_date)
+                sums_by_age_category[age_category] += count
+                processed_notfcn_ids.add(notfcn_id)
 
-    # Ensure all expected age categories are present
-    age_categories = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
-    for category in age_categories:
-        if category not in aggregate_counts:
-            aggregate_counts[category] = 0
+    return sums_by_age_category
 
-    # Reorder the columns to match the expected age categories
-    aggregate_counts = aggregate_counts[age_categories]
-
-    # Reset index to turn the categories into a column and prepare for final formatting
-    final_output = aggregate_counts.reset_index()
-
-    return final_output
-
-# Configuration: replace with the path to your Excel file and current date
-file_path = 'path_to_your_file.xlsx'
+# Assuming current_date is the first day of the current month
 current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-sheets = {
-    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523'],
-    # Add other categories and sheet names as necessary
-}
+print(current_date)
+sheets = ['Line 270', 'Line 297', 'Line 441', 'Line 447', 'Line 523']
+file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Replace with your actual file path
 
-# Process the notifications and get the formatted output
-formatted_output = process_notifications(file_path, sheets, current_date)
-
-# Print and optionally save the formatted output to an Excel file
-print(formatted_output)
-# formatted_output.to_excel('formatted_notification_counts.xlsx', index=False)
+# Process the file and get the counts
+sums_by_age_category = process_excel(file_path, sheets, current_date)
+print(sums_by_age_category)
