@@ -41,11 +41,14 @@ def process_excel(file_path, categories, current_date):
             sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'])
             sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'])
 
+            # Determine the correct count column name
+            count_column = 'COUNT(*)' if 'COUNT(*)' in sheet_data.columns else 'COUNT(\'*\')'
+
             # Process each row
             for index, row in sheet_data.iterrows():
                 notfcn_id = row['NOTFCN_ID']
                 notfcn_stat_typ = row['NOTFCN_STAT_TYP']
-                count = row['COUNT(*)']
+                count = row[count_column]
 
                 # Check if the NOTFCN_ID has been processed already within the category
                 if notfcn_id in processed_notfcn_ids:
