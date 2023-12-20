@@ -2,9 +2,22 @@ import pandas as pd
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from datetime import datetime, timedelta
+
+# Function to get the previous month's file name
+def get_previous_month_filename():
+    today = datetime.today()
+    first = today.replace(day=1)
+    last_month = first - timedelta(days=1)
+    return f"ODC_ConsolidatedFile_Monthly_{last_month.strftime('%b-%y')}.xlsx"
+
+# Dynamically get the file path
+excel_file_path = 'path/to/your/files/' + get_previous_month_filename()
 
 # Read the Excel file
-df = pd.read_excel('path/to/your/excel/file.xlsx')
+df = pd.read_excel(excel_file_path)
 
 # Function to convert columns to integers
 def convert_columns_to_int(df, columns):
@@ -67,13 +80,14 @@ bcc_recipients = ["bcc1@example.com", "bcc2@example.com"]
 all_recipients = to_recipients + cc_recipients + bcc_recipients
 
 # Create message
-message = MIMEMultipart("alternative")
+message = MIMEMultipart("mixed")
 message["Subject"] = "Email with Tables from Python"
 message["From"] = username
 message["To"] = ", ".join(to_recipients)
 message["CC"] = ", ".join(cc_recipients)
 
 # Email body with tables
+html_part = MIMEMultipart("alternative")
 html = f"""
 <html>
   <head>
@@ -97,7 +111,17 @@ html = f"""
   </body>
 </html>
 """
-part = MIMEText(html, "html")
+html_part.attach(MIMEText(html, "html"))
+
+# Attach the HTML part
+message.attach(html_part)
+
+# Attachment part (for the Excel file)
+part = MIMEBase('application', "octet-stream")
+with open(excel_file_path, 'rb') as file:
+    part.set_payload(file.read())
+encoders.encode_base64(part)
+part.add_header('Content-Disposition', 'attachment', filename=get_previous_month_filename())
 message.attach(part)
 
 # Send email
