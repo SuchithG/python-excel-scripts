@@ -6,6 +6,13 @@ age_categories = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 d
 
 # Define the function to determine the age category
 def determine_age_category(creation_date, current_date):
+    if not isinstance(creation_date, datetime):
+        # Convert to datetime if not already
+        try:
+            creation_date = pd.to_datetime(creation_date)
+        except ValueError:
+            raise ValueError(f"creation_date must be a datetime object, got {type(creation_date)} instead.")
+
     age_days = (current_date - creation_date).days
     if age_days <= 1:
         return '0-1 New'
@@ -40,13 +47,9 @@ def process_excel(file_path, categories, current_date):
             open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
             closed_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED']
 
-            # Deduplicate only OPEN records
             open_records_combined = pd.concat([open_records_combined, open_records]).drop_duplicates()
-
-            # Add CLOSED records without deduplication
             closed_records_combined = pd.concat([closed_records_combined, closed_records])
 
-        # CLOSED records filtering based on last notification in the current month
         closed_records_filtered = closed_records_combined[
             (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
             (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
@@ -54,9 +57,15 @@ def process_excel(file_path, categories, current_date):
 
         final_combined_records = pd.concat([open_records_combined, closed_records_filtered])
 
-        # Calculate counts for each unique row
         for _, row in final_combined_records.iterrows():
-            age_category = determine_age_category(row['TRUNC(NOTFCN_CRTE_TMS)'], current_date)
+            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
+            if isinstance(creation_date, list):
+                creation_date = creation_date[0] if creation_date else None
+            
+            if creation_date is None:
+                continue
+
+            age_category = determine_age_category(creation_date, current_date)
             count_column = 'COUNT(*)' if 'COUNT(*)' in row else 'COUNT(\'*\')'
             results_df.at[age_category, category] += row[count_column]
 
