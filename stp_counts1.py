@@ -28,20 +28,34 @@ def process_excel(file_path, categories, current_date):
     for category, sheets in categories.items():
         print(f"Processing category: {category}")
 
-        # Combine data from all sheets and remove complete duplicates
-        combined_data = pd.DataFrame()
+        # Combine OPEN records across all sheets and deduplicate
+        open_records_combined = pd.DataFrame()
+        closed_records_combined = pd.DataFrame()
         for sheet_name in sheets:
             print(f"  Reading data from sheet: {sheet_name}")
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            combined_data = pd.concat([combined_data, sheet_data])
+            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'])
+            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'])
+            
+            # Separate OPEN and CLOSED records
+            open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
+            closed_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED']
+            
+            # Combine and deduplicate
+            open_records_combined = pd.concat([open_records_combined, open_records]).drop_duplicates()
+            closed_records_combined = pd.concat([closed_records_combined, closed_records]).drop_duplicates()
 
-        # Normalize date columns and remove complete row duplicates
-        combined_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(combined_data['TRUNC(NOTFCN_CRTE_TMS)'])
-        combined_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(combined_data['TRUNC(LST_NOTFCN_TMS)'])
-        combined_data.drop_duplicates(inplace=True)
+        # CLOSED records filtering based on last notification in the current month
+        closed_records_filtered = closed_records_combined[
+            (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
+            (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
+        ]
+
+        # Combine OPEN and filtered CLOSED records for final processing
+        final_combined_records = pd.concat([open_records_combined, closed_records_filtered])
 
         # Calculate counts for each unique row
-        for _, row in combined_data.iterrows():
+        for _, row in final_combined_records.iterrows():
             age_category = determine_age_category(row['TRUNC(NOTFCN_CRTE_TMS)'], current_date)
             count_column = 'COUNT(*)' if 'COUNT(*)' in row else 'COUNT(\'*\')'
             results_df.at[age_category, category] += row[count_column]
