@@ -6,16 +6,15 @@ age_categories = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 d
 
 # Define the function to determine the age category
 def determine_age_category(creation_date, current_date):
-    # If creation_date is a list, use the first element
-    if isinstance(creation_date, list):
-        creation_date = creation_date[0] if creation_date else None
+    if isinstance(creation_date, list) or isinstance(creation_date, pd.Series):
+        creation_date = creation_date.iloc[0] if not creation_date.empty else None
 
-    # Convert to datetime if it's a string or not a datetime object
-    if isinstance(creation_date, str) or not isinstance(creation_date, datetime):
+    if isinstance(creation_date, str):
         try:
             creation_date = pd.to_datetime(creation_date)
         except Exception as e:
-            raise ValueError(f"Error converting creation_date to datetime: {e}")
+            print(f"Error converting creation_date to datetime: {e}, value: {creation_date}")
+            return None
 
     age_days = (current_date - creation_date).days
     if age_days <= 1:
@@ -45,33 +44,38 @@ def process_excel(file_path, categories, current_date):
         for sheet_name in sheets:
             print(f"  Reading data from sheet: {sheet_name}")
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'])
-            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'])
+            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
+            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
 
+            # Separate OPEN and CLOSED records
             open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
             closed_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED']
 
-            open_records_combined = pd.concat([open_records_combined, open_records]).drop_duplicates()
+            print(f"Found {len(open_records)} OPEN records in sheet: {sheet_name}")
+            print(f"Found {len(closed_records)} CLOSED records in sheet: {sheet_name}")
+
+            open_records_combined = pd.concat([open_records_combined, open_records]).drop_duplicates(subset='NOTFCN_ID')
             closed_records_combined = pd.concat([closed_records_combined, closed_records])
 
+        print(f"Total OPEN records combined: {len(open_records_combined)}")
+        print(f"Total CLOSED records combined before filtering: {len(closed_records_combined)}")
+
+        # Filter CLOSED records based on last notification in the current month
         closed_records_filtered = closed_records_combined[
             (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
             (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
         ]
 
+        print(f"Total CLOSED records after filtering: {len(closed_records_filtered)}")
+
         final_combined_records = pd.concat([open_records_combined, closed_records_filtered])
 
+        # Calculate counts for each unique row
         for _, row in final_combined_records.iterrows():
-            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
-            if isinstance(creation_date, list):
-                creation_date = creation_date[0] if creation_date else None
-            
-            if creation_date is None:
-                continue
-
-            age_category = determine_age_category(creation_date, current_date)
-            count_column = 'COUNT(*)' if 'COUNT(*)' in row else 'COUNT(\'*\')'
-            results_df.at[age_category, category] += row[count_column]
+            age_category = determine_age_category(row['TRUNC(NOTFCN_CRTE_TMS)'], current_date)
+            if age_category:
+                count_column = 'COUNT(*)' if 'COUNT(*)' in row.index else 'COUNT(\'*\')'
+                results_df.loc[age_category, category] += row[count_column]
 
         print(f"Completed processing for category: {category}\n")
 
@@ -83,13 +87,11 @@ print(f"Current date for processing: {current_date}")
 
 # Categories and their respective sheets
 categories = {
-    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523'],
-    #'FI': ['Line 1616', 'Line 1407', 'Line 1727', 'Line 1843'],
-    #'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088'],
-    #'LD': ['Line 2104', 'Line 2261', 'Line 2325', 'Line 2389']
+    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523']
 }
 
-file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Replace with your actual file path
+# Replace the file path with your actual file path
+file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update with the path to the uploaded file
 
 # Process the file and create a DataFrame with the results
 results_df = process_excel(file_path, categories, current_date)
