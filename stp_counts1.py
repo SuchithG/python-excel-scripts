@@ -6,12 +6,15 @@ age_categories = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 d
 
 # Define the function to determine the age category
 def determine_age_category(creation_date, current_date):
-    if not isinstance(creation_date, datetime):
-        # Convert to datetime if not already
+    # Convert to datetime if it's a string
+    if isinstance(creation_date, str):
         try:
             creation_date = pd.to_datetime(creation_date)
         except ValueError:
-            raise ValueError(f"creation_date must be a datetime object, got {type(creation_date)} instead.")
+            raise ValueError(f"Unable to convert creation_date to datetime, received: {creation_date}")
+
+    if not isinstance(creation_date, datetime):
+        raise ValueError(f"creation_date must be a datetime object, got {type(creation_date)} instead.")
 
     age_days = (current_date - creation_date).days
     if age_days <= 1:
