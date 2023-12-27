@@ -64,7 +64,8 @@ def process_excel(file_path, categories, current_date):
             creation_date = pd.to_datetime(row['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
             age_category = determine_age_category(creation_date, current_date)
             if age_category:
-                count = row.get('COUNT(*)', 0) + row.get("COUNT('*')", 0)
+                count_column_name = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
+                count = row.get(count_column_name, 0)
                 results_df.at[age_category, category] += count
 
                 # Debugging: Print each record's details
