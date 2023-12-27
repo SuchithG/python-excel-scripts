@@ -42,8 +42,8 @@ def process_excel(file_path, categories, current_date):
             creation_date = pd.to_datetime(row['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, current_date)
-                count_column = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
-                count = row[count_column]
+                # If COUNT(*) is not in the row, look for COUNT('*') and vice versa
+                count = row.get('COUNT(*)') if 'COUNT(*)' in row else row.get("COUNT('*')", 0)
                 results_df.at[age_category, category] += count
 
                 # Debugging: Print each record's details
