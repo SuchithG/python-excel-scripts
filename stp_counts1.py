@@ -28,26 +28,44 @@ def process_excel(file_path, categories, current_date):
 
         for sheet_name in sheets:
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+            # Convert columns to datetime
+            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
+            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
+
+            # Append sheet data to the combined DataFrame
             all_records = pd.concat([all_records, sheet_data])
 
-        # Drop duplicates based on a unique identifier
-        all_records.drop_duplicates(subset=['NOTFCN_ID'], inplace=True)
+        # Drop duplicates across all columns for the combined data
+        all_records.drop_duplicates(inplace=True)
 
-        # Debugging: Print the records after deduplication
-        print(f"Deduplicated records for {category}: {len(all_records)}")
-        print(all_records[['NOTFCN_ID', 'TRUNC(NOTFCN_CRTE_TMS)', 'NOTFCN_STAT_TYP']])
+        # Separate OPEN and CLOSED records
+        open_records = all_records[all_records['NOTFCN_STAT_TYP'] == 'OPEN']
+        closed_records = all_records[all_records['NOTFCN_STAT_TYP'] == 'CLOSED']
+
+        # Filter CLOSED records to include those with last notification time in the current month
+        closed_records_filtered = closed_records[
+            (closed_records['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
+            (closed_records['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
+        ]
+
+        # Debugging: Print the filtered CLOSED records and their count
+        print(f"Filtered CLOSED records for {category}:")
+        print(closed_records_filtered[['NOTFCN_ID', 'TRUNC(NOTFCN_CRTE_TMS)', 'TRUNC(LST_NOTFCN_TMS)', 'NOTFCN_STAT_TYP', 'COUNT(*)']])
+
+        # Combine OPEN and filtered CLOSED records for final processing
+        final_records = pd.concat([open_records, closed_records_filtered])
 
         # Calculate counts for each unique row
-        for _, row in all_records.iterrows():
-            creation_date = pd.to_datetime(row['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
+        for _, row in final_records.iterrows():
+            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, current_date)
-                # If COUNT(*) is not in the row, look for COUNT('*') and vice versa
-                count = row.get('COUNT(*)') if 'COUNT(*)' in row else row.get("COUNT('*')", 0)
+                count_column_name = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
+                count = row.get(count_column_name, 0)
                 results_df.at[age_category, category] += count
 
                 # Debugging: Print each record's details
-                print(f"ID: {row['NOTFCN_ID']}, Age Category: {age_category}, Count: {count}")
+                print(f"ID: {row.get('NOTFCN_ID', 'N/A')}, Age Category: {age_category}, Count: {count}")
 
     return results_df
 
