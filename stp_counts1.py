@@ -69,7 +69,8 @@ def process_excel(file_path, categories, current_date):
                 results_df.at[age_category, category] += count
 
                 # Debugging: Print each record's details
-                print(f"ID: {row.get('NOTFCN_ID', 'N/A')}, Age Category: {age_category}, Count: {count}")
+                notfcn_id = row.get('NOTFCN_ID', 'N/A')
+                print(f"ID: {notfcn_id}, Age Category: {age_category}, Count: {count}")
 
     return results_df
 
