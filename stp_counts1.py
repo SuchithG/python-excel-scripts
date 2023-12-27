@@ -32,52 +32,43 @@ def determine_age_category(creation_date, current_date):
 
 # Define the function to process the Excel file
 def process_excel(file_path, categories, current_date):
-    results_df = pd.DataFrame(index=age_categories, columns=categories.keys()).fillna(0)
+    results_df = pd.DataFrame(index=age_categories.keys(), columns=categories.keys()).fillna(0)
 
-    # Process each category and its sheets
     for category, sheets in categories.items():
-        print(f"Processing category: {category}")
-
-        open_records_combined = pd.DataFrame()
-        closed_records_combined = pd.DataFrame()
+        all_records = pd.DataFrame()
 
         for sheet_name in sheets:
-            print(f"  Reading data from sheet: {sheet_name}")
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
-            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
+            all_records = pd.concat([all_records, sheet_data])
 
-            # Separate OPEN and CLOSED records
-            open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
-            closed_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED']
+        # Drop duplicates across all columns for both OPEN and CLOSED records
+        all_records.drop_duplicates(inplace=True)
 
-            print(f"Found {len(open_records)} OPEN records in sheet: {sheet_name}")
-            print(f"Found {len(closed_records)} CLOSED records in sheet: {sheet_name}")
+        # Debugging: Print the records after deduplication
+        print(f"Deduplicated records for {category}: {len(all_records)}")
+        print(all_records)
 
-            open_records_combined = pd.concat([open_records_combined, open_records]).drop_duplicates(subset='NOTFCN_ID')
-            closed_records_combined = pd.concat([closed_records_combined, closed_records])
-
-        print(f"Total OPEN records combined: {len(open_records_combined)}")
-        print(f"Total CLOSED records combined before filtering: {len(closed_records_combined)}")
-
-        # Filter CLOSED records based on last notification in the current month
-        closed_records_filtered = closed_records_combined[
-            (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
-            (closed_records_combined['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
+        # Filter records into open and closed based on status and last notification time for closed
+        open_records = all_records[all_records['NOTFCN_STAT_TYP'] == 'OPEN']
+        closed_records = all_records[
+            (all_records['NOTFCN_STAT_TYP'] == 'CLOSED') &
+            (pd.to_datetime(all_records['TRUNC(LST_NOTFCN_TMS)'], errors='coerce').dt.month == current_date.month) &
+            (pd.to_datetime(all_records['TRUNC(LST_NOTFCN_TMS)'], errors='coerce').dt.year == current_date.year)
         ]
 
-        print(f"Total CLOSED records after filtering: {len(closed_records_filtered)}")
-
-        final_combined_records = pd.concat([open_records_combined, closed_records_filtered])
+        # Combine OPEN and CLOSED records for final processing
+        final_records = pd.concat([open_records, closed_records])
 
         # Calculate counts for each unique row
-        for _, row in final_combined_records.iterrows():
-            age_category = determine_age_category(row['TRUNC(NOTFCN_CRTE_TMS)'], current_date)
+        for _, row in final_records.iterrows():
+            creation_date = pd.to_datetime(row['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
+            age_category = determine_age_category(creation_date, current_date)
             if age_category:
-                count_column = 'COUNT(*)' if 'COUNT(*)' in row.index else 'COUNT(\'*\')'
-                results_df.loc[age_category, category] += row[count_column]
+                count = row.get('COUNT(*)', 0) + row.get("COUNT('*')", 0)
+                results_df.at[age_category, category] += count
 
-        print(f"Completed processing for category: {category}\n")
+                # Debugging: Print each record's details
+                print(f"ID: {row.get('NOTFCN_ID', 'N/A')}, Age Category: {age_category}, Count: {count}")
 
     return results_df
 
