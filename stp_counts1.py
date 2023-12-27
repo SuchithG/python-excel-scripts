@@ -30,24 +30,24 @@ def process_excel(file_path, categories, current_date):
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
             all_records = pd.concat([all_records, sheet_data])
 
-        # Drop duplicates across all columns for both OPEN and CLOSED records
-        all_records.drop_duplicates(inplace=True)
+        # Drop duplicates based on a unique identifier
+        all_records.drop_duplicates(subset=['NOTFCN_ID'], inplace=True)
 
         # Debugging: Print the records after deduplication
         print(f"Deduplicated records for {category}: {len(all_records)}")
-        print(all_records)
+        print(all_records[['NOTFCN_ID', 'TRUNC(NOTFCN_CRTE_TMS)', 'NOTFCN_STAT_TYP']])
 
         # Calculate counts for each unique row
         for _, row in all_records.iterrows():
             creation_date = pd.to_datetime(row['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, current_date)
-                count_column_name = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
-                count = row.get(count_column_name, 0)
+                count_column = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
+                count = row[count_column]
                 results_df.at[age_category, category] += count
 
                 # Debugging: Print each record's details
-                print(f"ID: {row.get('NOTFCN_ID', 'N/A')}, Age Category: {age_category}, Count: {count}")
+                print(f"ID: {row['NOTFCN_ID']}, Age Category: {age_category}, Count: {count}")
 
     return results_df
 
