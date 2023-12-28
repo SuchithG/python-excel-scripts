@@ -38,40 +38,30 @@ def process_excel(file_path, categories, current_date):
         # Drop duplicates across all columns for the combined data
         all_records.drop_duplicates(inplace=True)
 
-        # Separate OPEN and CLOSED records
-        open_records = all_records[all_records['NOTFCN_STAT_TYP'] == 'OPEN']
-        closed_records = all_records[all_records['NOTFCN_STAT_TYP'] == 'CLOSED']
-
         # Filter CLOSED records to include those with last notification time in the current month
-        closed_records_filtered = closed_records[
-            (closed_records['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
-            (closed_records['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
+        closed_records_filtered = all_records[
+            (all_records['NOTFCN_STAT_TYP'] == 'CLOSED') &
+            (all_records['TRUNC(LST_NOTFCN_TMS)'].dt.month == current_date.month) &
+            (all_records['TRUNC(LST_NOTFCN_TMS)'].dt.year == current_date.year)
         ]
 
-        # Debugging: Print the filtered CLOSED records and their count
-        print(f"Filtered CLOSED records for {category}:")
-        print(closed_records_filtered[['NOTFCN_ID', 'TRUNC(NOTFCN_CRTE_TMS)', 'TRUNC(LST_NOTFCN_TMS)', 'NOTFCN_STAT_TYP', 'COUNT(*)']])
-
         # Combine OPEN and filtered CLOSED records for final processing
-        final_records = pd.concat([open_records, closed_records_filtered])
+        final_records = pd.concat([all_records[all_records['NOTFCN_STAT_TYP'] == 'OPEN'], closed_records_filtered])
 
         # Calculate counts for each unique row
         for _, row in final_records.iterrows():
             creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, current_date)
-                count_column_name = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
-                count = row.get(count_column_name, 0)
+                count_column = 'COUNT(*)' if 'COUNT(*)' in row else "COUNT('*')"
+                count = row[count_column]
                 results_df.at[age_category, category] += count
-
-                # Debugging: Print each record's details
-                print(f"ID: {row.get('NOTFCN_ID', 'N/A')}, Age Category: {age_category}, Count: {count}")
 
     return results_df
 
 # Current date for processing
-current_date = datetime(2023, 12, 1)
-print(f"Current date for processing: {current_date}")
+current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+print(f"Current date for processing: {current_date.strftime('%Y-%m-%d')}")
 
 # Categories and their respective sheets
 categories = {
