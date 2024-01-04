@@ -44,7 +44,7 @@ def transform_data(input_directory, output_file_path):
     # Calculate 'Total OPEN' and 'OPEN Percentage'
     pivot_data['Total OPEN'] = pivot_data[['P1 OPEN', 'P2 OPEN', 'P3 OPEN']].sum(axis=1)
     pivot_data['Total Volume'] = pivot_data[['Total P1', 'Total P2', 'Total P3']].sum(axis=1)
-    pivot_data['OPEN Percentage'] = (pivot_data['Total OPEN'] / pivot_data['Total Volume']).fillna(0) * 100
+    pivot_data['OPEN Percentage'] = round((pivot_data['Total OPEN'] / pivot_data['Total Volume']).fillna(0) * 100, 1)
 
     # Add the 'Month/Year' column to the dataframe, formatted as 'Oct-2023'
     pivot_data['Month/Year'] = last_month.strftime('%b-%Y')
