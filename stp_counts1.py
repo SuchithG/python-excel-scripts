@@ -20,6 +20,10 @@ def determine_age_category(creation_date, current_date):
     return '>180 days'  # Default for any case not covered above
 
 def process_excel(file_path, categories, current_date):
+    # Determine the start and end of the current month
+    current_month_start = current_date.replace(day=1)
+    current_month_end = current_date.replace(month=current_date.month % 12 + 1, day=1) - pd.Timedelta(days=1)
+
     results_df = pd.DataFrame(index=age_categories.keys(), columns=categories.keys()).fillna(0)
 
     for category, sheets in categories.items():
@@ -43,7 +47,15 @@ def process_excel(file_path, categories, current_date):
         # Calculate counts for each unique row
         for _, row in final_records.iterrows():
             creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
+            last_notification_date = row['TRUNC(LST_NOTFCN_TMS)']
+
             if pd.notnull(creation_date):
+                # Apply additional filtering for 'CLOSED' status
+                if row['NOTFCN_STAT_TYP'] == 'CLOSED' and pd.notnull(last_notification_date):
+                    # Skip the row if the last notification date is not in the current month
+                    if not (current_month_start <= last_notification_date <= current_month_end):
+                        continue
+
                 age_category = determine_age_category(creation_date, current_date)
                 # Ensure the count column is numeric and handle NaN values
                 count = pd.to_numeric(row.get('COUNT(*)', 0), errors='coerce')
@@ -52,13 +64,13 @@ def process_excel(file_path, categories, current_date):
 
     return results_df
 
-# Current date for processing
+# Example usage
 current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 print(f"Current date for processing: {current_date.strftime('%Y-%m-%d')}")
 
-# Categories and their respective sheets
 categories = {
-    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523']
+    #'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523']
+    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
 
 # Replace the file path with your actual file path
