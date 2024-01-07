@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 
 def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
     # Set up the email server and login
-    server = smtplib.SMTP('', )
+    server = smtplib.SMTP('smtp', 27 )
     server.starttls()
-    server.login("your_email@gmail.com")
+    server.login("your_email@gmail.com","password")
     from_email = "your_password" 
 
     # Convert the email message
@@ -20,6 +20,7 @@ def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
     msg['Cc'] = ', '.join(cc_recipients)
     msg["Subject"] = subject
 
+    # Attach the body and the excel file to email
     msg.attach(MIMEText(body, 'html'))
     with open(file_path, "rb") as attachment:
         part = MIMEBase("application", "octet-stream")
@@ -57,8 +58,8 @@ def process_and_send_email_with_tables():
     previous_month_name = last_day_of_previous_month.strftime("%b-%y")  # Format: Nov-23
 
     # Construct file names
-    input_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
-    output_file_name = f"ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
+    input_file_name = f"path/ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
+    output_file_name = f"path/ODC_ConsolidatedFile_Monthly_{previous_month_name}.xlsx"
 
     # Load data from the primary Excel file
     df = pd.read_excel(input_file_name)
@@ -76,7 +77,7 @@ def process_and_send_email_with_tables():
         print("Data available for November 2023.")
 
     # Calculate the BOT Volumes
-    columns_to_sum_bot = ['Asset Class/Reports', 'Application', 'Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']
+    columns_to_sum_bot = ['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']
     bot_volumes = summary_df_filtered[columns_to_sum_bot].sum().sum()
 
     # Remove duplicate entries in 'PDF Name'
@@ -130,7 +131,7 @@ def process_and_send_email_with_tables():
     # Generate HTML tables for both
     table_html_1 = aggregated_data_with_total_1.to_html(index=False) if not aggregated_data_1.empty else "<p>No data available</p>"
     table_html_2 = aggregated_data_with_total_2.to_html(index=False) if not aggregated_data_2.empty else "<p>No data available</p>"
-    table_html_new = new_table_df.to_html(index=False)
+    table_html_3 = new_table_df.to_html(index=False)
 
     body = f"""
     <html>
@@ -152,7 +153,7 @@ def process_and_send_email_with_tables():
             <p><b>Total count</b></p>
             {table_html_2}
             <p><b>Total count</b></p>
-            {table_html_new}
+            {table_html_3}
             <p>Thanks and Regards,</p>
             <p>Suchith</p>
         </body>
