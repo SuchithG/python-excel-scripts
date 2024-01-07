@@ -81,7 +81,7 @@ def process_and_send_email_with_tables():
     bot_volumes = summary_df_filtered[columns_to_sum_bot].sum().sum()
 
     # Remove duplicate entries in 'PDF Name'
-    unique_pdf_df = df.drop_duplicates(subset=['PDF Name'])
+    unique_pdf_df = df.drop_duplicates(subset=['Date', 'Month', 'Region', 'PDF Name', 'Asset Class/Reports'])
 
     # Convert 'Date' column to datetime format
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
@@ -107,7 +107,7 @@ def process_and_send_email_with_tables():
     aggregated_data_with_total_2 = add_total_row(aggregated_data_2, columns_to_sum)
 
      # Aggregation for the new table
-    total_pdf_count = len(unique_pdf_df['PDF Name'])
+    total_pdf_count = unique_pdf_df['PDF Name'].count()
     total_security_setup = df['Setup'].sum()
     total_security_amendments = df[['Amend', 'Closure', 'Deletion']].sum().sum()  # Sum across columns, then total sum
     total_security_review = df['Review'].sum()
