@@ -1,11 +1,21 @@
 import pandas as pd
+from datetime import datetime
+
+# Function to get the previous month and year in the format "Dec_23"
+def get_previous_month_year_str():
+    current_date = datetime.now()
+    previous_month_date = current_date.replace(day=1) - pd.Timedelta(days=1)
+    return previous_month_date.strftime('%b_%y')
+
+# Call the function to get the string for the previous month and year
+previous_month_year_str = get_previous_month_year_str()
 
 # Paths to the input files
-input_file_path = r'C:\Users\Suchith G\Documents\Test Docs\IRDS_MONTHY_REPORT_TEMPLET.xlsx'
+input_file_path = f'C:\Users\Suchith G\Documents\Test Docs\IRDS_MONTHY_REPORT_TEMPLET_{{{previous_month_year_str}}}.xlsx'
 sla_file_path = r'C:\Users\Suchith G\Documents\Test Docs\DQ SLA.xlsx'
 
 # Paths to the output file
-output_file_path = r'C:\Users\Suchith G\Documents\Test Docs\DQ Output\DQ tickets output - AugSepOct_UAT.xlsx'
+output_file_path = f'C:\Users\Suchith G\Documents\Test Docs\DQ Output\DQ tickets output - {previous_month_year_str}_UAT.xlsx'
 
 # Read the input Excel file
 input_df = pd.read_excel(input_file_path)
