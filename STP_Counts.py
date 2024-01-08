@@ -28,8 +28,19 @@ def process_excel_custom(file_path, categories, current_date):
         all_records = pd.DataFrame()
 
         for sheet_name in sheets:
-            cols_to_read = ["TRUNC(NOTFCN_CRTE_TMS)", "TRUNC(LST_NOTFCN_TMS)", "NOTFCN_ID", "NOTFCN_STAT_TYP", "COUNT(*)"]
-            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name, usecols=cols_to_read)
+            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+
+            # Determine the correct count column name
+            if 'COUNT(*)' in sheet_data.columns:
+                count_col = 'COUNT(*)'
+            elif "COUNT('*')" in sheet_data.columns:
+                count_col = "COUNT('*')"
+            else:
+                continue  # Skip the sheet if no count column is found
+
+            # Select only necessary columns
+            cols_to_read = ["TRUNC(NOTFCN_CRTE_TMS)", "TRUNC(LST_NOTFCN_TMS)", "NOTFCN_ID", "NOTFCN_STAT_TYP", count_col]
+            sheet_data = sheet_data[cols_to_read]
 
             # Convert columns to datetime
             sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
@@ -54,10 +65,33 @@ def process_excel_custom(file_path, categories, current_date):
                     age_category = determine_age_category(creation_date, current_date)
                     results_df.at[age_category, category] += count
 
-    return results_df
+        # Now let's add the additional table similar to the first table in the image
+    summary_df = pd.DataFrame(index=['Open/Assign', 'Closed'], columns=categories.keys())
 
+    # Calculate 'Open/Assign' values by summing across ageing breaks
+    for category in categories.keys():
+        summary_df.at['Open/Assign', category] = results_df[category].sum()
+
+    # Calculate 'Closed' value by summing 'COUNT(*)' from "Line 655" sheet
+    line_655_data = pd.read_excel(file_path, sheet_name='Line 655')
+    # Check for both possible count column names
+    if 'COUNT(*)' in line_655_data.columns:
+        count_col = 'COUNT(*)'
+    elif "COUNT('*')" in line_655_data.columns:
+        count_col = "COUNT('*')"
+    else:
+        count_col = None  # If neither column is present, set to None
+
+    if count_col:
+        summary_df.at['Closed', 'Equity'] = line_655_data[count_col].sum()
+    else:
+        summary_df.at['Closed', 'Equity'] = 0  # If no count column, set to 0
+
+    return results_df, summary_df
+        
 # Example usage
 current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
 categories = {
     'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
@@ -66,5 +100,11 @@ file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update t
 # Process the file and create a DataFrame with the results
 results_df = process_excel_custom(file_path, categories, current_date)
 
-# Display the DataFrame
+# Process the file and create DataFrames with the results
+results_df, summary_df = process_excel_custom(file_path, categories, current_date)
+
+# Display the DataFrames
+print("Ageing DataFrame:")
 print(results_df)
+print("\nSummary DataFrame:")
+print(summary_df)
