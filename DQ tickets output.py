@@ -13,8 +13,8 @@ input_df = pd.read_excel(input_file_path)
 # Read the DQ SLA Excel file
 sla_df = pd.read_excel(sla_file_path)
 
-# Convert the "Incident Duration Excluding GMT Weekends (Seconds)" to hours and create a new column "Time in HRS"
-input_df['Time in HRS'] = input_df['Incident Duration Excluding GMT Weekends (Seconds)'] / 3600
+# Convert the "Incident Duration Excluding GMT Weekends (Seconds)" to hours and round to two decimal places
+input_df['Time in HRS'] = round(input_df['Incident Duration Excluding GMT Weekends (Seconds)'] / 3600, 2)
 
 # Rename the 'SLA Desc' column in sla_df to match 'Incident External Reference' in input_df for merging
 sla_df.rename(columns={'SLA Desc': 'Incident External Reference'}, inplace=True)
