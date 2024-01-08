@@ -1,183 +1,70 @@
 import pandas as pd
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime
 
-def load_data(file_path, sheet_name):
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
-    df.columns = df.columns.str.strip()  # Strip whitespace from column names
-    return df
+# Define the age categories as per the new logic
+def determine_age_category(creation_date, current_date):
+    previous_month_end = current_date.replace(day=1) - pd.Timedelta(days=1)
+    previous_month_start = previous_month_end.replace(day=1)
 
-def calculate_closed_count(df):
-    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
-    return df[count_column].sum()
+    if previous_month_start <= creation_date <= previous_month_end:
+        day_of_month = creation_date.day
+        if day_of_month >= 30:  # 30th and 31st
+            return '0-1 New'
+        elif day_of_month >= 25:  # 25th to 29th
+            return '02-07 days'
+        elif day_of_month >= 16:  # 16th to 24th
+            return '08-15 days'
+        else:  # First 15 days
+            return '16-30 days'
+    elif creation_date < previous_month_start - pd.Timedelta(days=180):
+        return '>180 days'
+    else:  # Previous month and up to 180 days
+        return '31-180 days'
 
-def calculate_combined_unique_open_assign_count(file_path, sheets, next_month_date):
-    combined_df = pd.DataFrame()
-    for sheet in sheets:
-        df = load_data(file_path, sheet)
-        combined_df = pd.concat([combined_df, df], ignore_index=True)
+def process_excel_custom(file_path, categories, current_date):
+    results_df = pd.DataFrame(index=['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days'], columns=categories.keys()).fillna(0)
 
-    # Determine the correct count column name
-    count_column = 'COUNT(*)' if 'COUNT(*)' in combined_df.columns else "COUNT('*')"
+    for category, sheets in categories.items():
+        all_records = pd.DataFrame()
 
-    # Convert 'TRUNC(LST_NOTFCN_TMS)' to datetime
-    combined_df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(combined_df['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
+        for sheet_name in sheets:
+            cols_to_read = ["TRUNC(NOTFCN_CRTE_TMS)", "TRUNC(LST_NOTFCN_TMS)", "NOTFCN_ID", "NOTFCN_STAT_TYP", "COUNT(*)"]
+            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name, usecols=cols_to_read)
 
-    # Apply filters
-    filtered_combined_df = combined_df[
-        (combined_df['NOTFCN_STAT_TYP'] == 'OPEN') |
-        ((combined_df['NOTFCN_STAT_TYP'] == 'CLOSED') &
-         (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.month == next_month_date.month) &
-         (combined_df['TRUNC(LST_NOTFCN_TMS)'].dt.year == next_month_date.year))
-    ]
+            # Convert columns to datetime
+            sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
+            sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
 
-    # Sum the count for unique NOTFCN_IDs
-    unique_counts = filtered_combined_df.drop_duplicates(subset='NOTFCN_ID')[count_column].sum()
-    return unique_counts
+            all_records = pd.concat([all_records, sheet_data])
 
-def calculate_ageing_breaks(df, next_month_date):
-    # Determine the correct count column name
-    count_column = 'COUNT(*)' if 'COUNT(*)' in df.columns else "COUNT('*')"
+        all_records.drop_duplicates(inplace=True)
 
-    # Convert dates to datetime
-    df['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(df['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
-    df['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(df['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
+        for _, row in all_records.iterrows():
+            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
+            last_notification_date = row['TRUNC(LST_NOTFCN_TMS)']
+            notification_status = row['NOTFCN_STAT_TYP']
+            count = pd.to_numeric(row['COUNT(*)'], errors='coerce')
+            count = 0 if pd.isna(count) else count
 
-    # Define the bins for the ageing categories
-    bins = [0, 1, 7, 15, 30, 180, float('inf')]
-    labels = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
+            if pd.notnull(creation_date) and notification_status == 'OPEN':
+                age_category = determine_age_category(creation_date, current_date)
+                results_df.at[age_category, category] += count
+            elif pd.notnull(creation_date) and notification_status == 'CLOSED' and pd.notnull(last_notification_date):
+                if current_date.month == last_notification_date.month and current_date.year == last_notification_date.year:
+                    age_category = determine_age_category(creation_date, current_date)
+                    results_df.at[age_category, category] += count
 
-    # Initialize the counts for each category
-    ageing_breaks = {label: 0 for label in labels}
+    return results_df
 
-    # Filter out unique NOTFCN_IDs
-    unique_df = df.drop_duplicates(subset='NOTFCN_ID')
-
-    # Categorize each item based on age and status
-    for _, row in unique_df.iterrows():
-        if row['NOTFCN_STAT_TYP'] == 'OPEN':
-            age = (next_month_date - row['TRUNC(NOTFCN_CRTE_TMS)']).days
-        elif row['NOTFCN_STAT_TYP'] == 'CLOSED' and row['TRUNC(LST_NOTFCN_TMS)'].month == next_month_date.month:
-            age = (next_month_date - row['TRUNC(NOTFCN_CRTE_TMS)']).days
-        else:
-            continue
-
-        # Increment the correct ageing category
-        for i, upper_bound in enumerate(bins):
-            if age <= upper_bound:
-                ageing_breaks[labels[i]] += int(row[count_column])
-                break
-
-    return ageing_breaks
-
-# Replace with your actual file path
-file_path = 'your_file.xlsx'
-
-# Closed counts
-sheets_and_loans_closed = {
-    'Line 180': 'Loans',
-    'Line 1280': 'FI',
-    'Line 655': 'Equity',
-    'Line 2020': 'LD'
+# Example usage
+current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+categories = {
+    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
+file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update this with your file path
 
-closed_counts = {}
-for sheet, loan_type in sheets_and_loans_closed.items():
-    df = load_data(file_path, sheet)
-    closed_count = calculate_closed_count(df)
-    closed_counts[loan_type] = closed_count
+# Process the file and create a DataFrame with the results
+results_df = process_excel_custom(file_path, categories, current_date)
 
-# Open/Assign counts
-next_month_date = pd.Timestamp('2023-12-01')  # Set this to the next month date you're interested in
-
-sheet_names_open_assign = {
-    'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 523'],
-    'FI': ['Line 1616', 'Line 1407', 'Line 1727', 'Line 1843'],
-    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088'],
-    'LD': ['Line 2104', 'Line 2261', 'Line 2325', 'Line 2389']
-}
-
-'''
-open_assign_counts = {}
-for loan_type, sheets in sheet_names_open_assign.items():
-    total_count = 0
-    for sheet in sheets:
-        df = load_data(file_path, sheet)
-        total_count += calculate_open_assign_count(df, next_month_date, sheet)
-    open_assign_counts[loan_type] = total_count
-'''
-# Function to convert the open ageing breaks data to a DataFrame and then to HTML
-def format_open_ageing_breaks_to_html(ageing_breaks):
-    # Convert the dictionary to a DataFrame
-    ageing_breaks_df = pd.DataFrame(ageing_breaks).T
-    ageing_breaks_df.columns = ['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days']
-    ageing_breaks_df.index.name = 'Loan Type'
-
-    # Convert the DataFrame to HTML
-    return ageing_breaks_df.to_html()
-
-# Calculate closed and open/assign counts
-closed_counts = {loan_type: calculate_closed_count(load_data(file_path, sheet)) for sheet, loan_type in sheets_and_loans_closed.items()}
-open_assign_counts = {loan_type: calculate_combined_unique_open_assign_count(file_path, sheets, next_month_date) for loan_type, sheets in sheet_names_open_assign.items()}
-
-# Calculate open ageing breaks for each loan type
-open_ageing_breaks = {}
-for loan_type, sheets in sheet_names_open_assign.items():
-    combined_df = pd.concat([load_data(file_path, sheet) for sheet in sheets], ignore_index=True)
-    open_ageing_breaks[loan_type] = calculate_ageing_breaks(combined_df, next_month_date)
-
-# Debug print
-print("Open Ageing Breaks:", open_ageing_breaks)
-
-# Convert the open ageing breaks to HTML
-open_ageing_breaks_html = format_open_ageing_breaks_to_html(open_ageing_breaks)
-
-# Debug print
-print("Open Ageing Breaks HTML:\n", open_ageing_breaks_html)
-
-# Creating a DataFrame for email content
-data_for_email = {
-    'Loan Type': [],
-    'Closed Count': [],
-    'Open/Assign Count': []
-}
-for loan_type in closed_counts:
-    data_for_email['Loan Type'].append(loan_type)
-    data_for_email['Closed Count'].append(closed_counts[loan_type])
-    data_for_email['Open/Assign Count'].append(open_assign_counts.get(loan_type, 0))
-
-email_df = pd.DataFrame(data_for_email)
-html_table = email_df.to_html(index=False)
-
-# Combine both tables' HTML content
-combined_html_table = f"{html_table}<br><br>{open_ageing_breaks_html}"
-
-# Debug print
-print("Combined HTML Table:\n", combined_html_table)
-
-# Email setup (replace with your actual details)
-smtp_host = 'your_smtp_host'
-smtp_port = your_smtp_port
-username = 'your_username'
-password = 'your_password'
-sender_email = 'sender@example.com'
-recipient_email = 'recipient@example.com'
-
-# Email content
-msg = MIMEMultipart('alternative')
-msg['Subject'] = 'Loan Counts and Ageing Breaks Tables'
-msg['From'] = sender_email
-msg['To'] = recipient_email
-
-# Attach the combined HTML content
-html_part = MIMEText(combined_html_table, 'html')
-msg.attach(html_part)
-
-# Send the email
-with smtplib.SMTP(smtp_host, smtp_port) as server:
-    server.starttls() 
-    server.login(username, password)
-    server.send_message(msg)
-
-print('Email sent!')
+# Display the DataFrame
+print(results_df)
