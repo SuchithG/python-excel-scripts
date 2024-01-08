@@ -116,7 +116,7 @@ def process_and_send_email_with_tables():
     # Creating a DataFrame for the new table
     data_for_new_table = {
         'PDF Count': [total_pdf_count],
-        'Security Setup': [total_security_setup],
+        'Security Setup': [total_security_setup], 
         'Security Amendments': [total_security_amendments],
         'Security Review': [total_security_review],
         'Espear Exceptions': [total_espear_exceptions],
