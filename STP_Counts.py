@@ -90,8 +90,21 @@ def process_excel_custom(file_path, categories, closed_sheets):
             total_exceptions_df.loc['Closed', category] = closed_data['COUNT(*)'].sum()
         except Exception as e:
             print(f"Error processing sheet {sheet_name} for closed counts: {e}")
+    
+    bulk_values = {'Equity': 0, 'Loans': 0, 'LD': 0, 'FI': 0}
+    manual_values = {'Equity': 0, 'Loans': 0, 'LD': 0, 'FI': 0}
+    auto_values = {'Equity': 0, 'Loans': 0, 'LD': 0, 'FI': 0}
 
-    return open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df 
+    # Initialize the DataFrame for total breakup
+    total_breakup_df = pd.DataFrame(index=['Bulk', 'Manual', 'Auto', 'Open'], columns=categories.keys())
+
+    # Fill in the values for Bulk, Manual, Auto, and Open
+    total_breakup_df.loc['Bulk'] = pd.Series(bulk_values)
+    total_breakup_df.loc['Manual'] = pd.Series(manual_values)
+    total_breakup_df.loc['Auto'] = pd.Series(auto_values)
+    total_breakup_df.loc['Open'] = total_exceptions_df.loc['Open/Assign']
+
+    return open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df, total_breakup_df
 
 categories = {
     'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
@@ -106,7 +119,7 @@ closed_sheets = {
 
 file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'
 
-open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df  = process_excel_custom(file_path, categories, closed_sheets)
+open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df, total_breakup_df  = process_excel_custom(file_path, categories, closed_sheets)
 
 print("Open Ageing DataFrame:")
 print(open_ageing_df)
@@ -116,3 +129,5 @@ print("\nTotal Ageing DataFrame:")
 print(total_ageing_df)
 print("\nTotal exceptions DataFrame:")
 print(total_exceptions_df)
+print("\nTotal exceptions DataFrame:")
+print(total_breakup_df)
