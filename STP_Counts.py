@@ -83,13 +83,22 @@ def process_excel_custom(file_path, categories, closed_sheets):
     for category in categories.keys():
         total_exceptions_df.loc['Open/Assign', category] = total_ageing_df[category].sum()
     
-    # Read each sheet for Closed values and sum the 'COUNT(*)' column
+    # Read each sheet for Closed and Manual counts
     for category, sheet_name in closed_sheets.items():
         try:
-            closed_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            total_exceptions_df.loc['Closed', category] = closed_data['COUNT(*)'].sum()
+            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+            # Standardize the COUNT column name
+            count_col = 'COUNT(*)' if 'COUNT(*)' in sheet_data.columns else "COUNT('*')" if "COUNT('*')" in sheet_data.columns else None
+            
+            if count_col:
+                # Sum the 'COUNT(*)' for Closed
+                total_exceptions_df.loc['Closed', category] = sheet_data[count_col].sum()
+
+                # Calculate Manual counts where 'LAST_CHG_USR_ID' ends with '@db.com'
+                manual_records = sheet_data[sheet_data['LAST_CHG_USR_ID'].astype(str).str.endswith('@db.com')]
+                total_breakup_df.loc['Manual', category] = manual_records[count_col].sum()
         except Exception as e:
-            print(f"Error processing sheet {sheet_name} for closed counts: {e}")
+            print(f"Error processing sheet {sheet_name}: {e}")
     
     bulk_values = {'Equity': 0, 'Loans': 0, 'LD': 0, 'FI': 0}
     manual_values = {'Equity': 0, 'Loans': 0, 'LD': 0, 'FI': 0}
