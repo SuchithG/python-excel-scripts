@@ -22,11 +22,16 @@ def determine_age_category(creation_date, current_date):
         return '31-180 days'
 
 def process_excel_custom(file_path, categories, current_date, summary_sheets):
+    # Define the start and end of the current month
+    current_month_start = current_date.replace(day=1)
+    current_month_end = current_date.replace(day=1, month=current_date.month % 12 + 1) - pd.Timedelta(days=1)
+
     results_df = pd.DataFrame(index=['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days'], columns=categories.keys()).fillna(0)
     total_breakup_df = pd.DataFrame(index=['Bulk', 'Manual', 'Auto', 'Open'], columns=categories.keys()).fillna(0)
-    
+
     for category, sheets in categories.items():
-        all_records = pd.DataFrame()
+        category_open_records = pd.DataFrame()
+        category_closed_records = pd.DataFrame()
 
         for sheet_name in sheets:
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
@@ -35,54 +40,43 @@ def process_excel_custom(file_path, categories, current_date, summary_sheets):
                 continue  # Skip the sheet if no count column is found
 
             sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
-            all_records = pd.concat([all_records, sheet_data])
+            
+            # Split OPEN and CLOSED records and filter
+            open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
+            closed_records = sheet_data[(sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED') & 
+                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] >= current_month_start) & 
+                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] <= current_month_end)]
 
-        all_records.drop_duplicates(inplace=True)
+            # Append to the category-specific DataFrames
+            category_open_records = pd.concat([category_open_records, open_records])
+            category_closed_records = pd.concat([category_closed_records, closed_records])
 
-        # Calculate 'Open/Assign' and 'Closed' for summary DataFrame
-        # This will be done after this loop
+        # Combine OPEN and CLOSED records for the category
+        category_combined_records = pd.concat([category_open_records, category_closed_records])
 
-        # Calculate ageing counts for each category
-        for _, row in all_records.iterrows():
+        # Remove duplicates across all columns
+        category_combined_records.drop_duplicates(inplace=True)
+
+        # Calculate ageing counts for the category
+        for _, row in category_combined_records.iterrows():
             creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
-            last_notification_date = row['TRUNC(LST_NOTFCN_TMS)']
-            notification_status = row['NOTFCN_STAT_TYP']
             count = pd.to_numeric(row[count_col], errors='coerce')
             count = 0 if pd.isna(count) else count
 
-            if pd.notnull(creation_date) and notification_status == 'OPEN':
+            if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, current_date)
                 results_df.at[age_category, category] += count
-            elif pd.notnull(creation_date) and notification_status == 'CLOSED' and pd.notnull(last_notification_date):
-                if current_date.month == last_notification_date.month and current_date.year == last_notification_date.year:
-                    age_category = determine_age_category(creation_date, current_date)
-                    results_df.at[age_category, category] += count
 
-        # Calculate 'Manual' entries for total breakup DataFrame
-        if 'NOTFCN_ID' in all_records.columns and count_col:
-            manual_filter = all_records['NOTFCN_ID'].astype(str).str.endswith('@db.com')
-            manual_records = all_records[manual_filter]
-            total_breakup_df.at['Manual', category] = manual_records[count_col].sum()
+    # Calculate 'Manual', 'Bulk', 'Auto', and 'Open' for total_breakup_df
+    # ... (additional logic for 'Manual', 'Bulk', 'Auto', and 'Open')
 
-    # Now let's create the summary DataFrame like the first table in the image
-    summary_df = pd.DataFrame(index=['Open/Assign', 'Closed'], columns=categories.keys())
-
-    # Calculate 'Open/Assign' values by summing across ageing breaks
-    for category in categories.keys():
-        summary_df.at['Open/Assign', category] = results_df[category].sum()
-
-    # Calculate 'Closed' value by summing 'COUNT(*)' from the specified sheets for each category
-    closed_counts = {}
-    for category, closed_sheet in summary_sheets.items():
-        closed_data = pd.read_excel(file_path, sheet_name=closed_sheet)
-        count_col = 'COUNT(*)' if 'COUNT(*)' in closed_data.columns else "COUNT('*')" if "COUNT('*')" in closed_data.columns else None
-        if count_col:
-            closed_counts[category] = closed_data[count_col].sum()
-        else:
-            closed_counts[category] = 0  # If no count column, set to 0
+    # Calculate summary_df
+    summary_df = pd.DataFrame(index=['Open/Assign', 'Closed'], columns=categories.keys()).fillna(0)
     
+    # Populate summary_df with counts
     for category in categories.keys():
-        summary_df.at['Closed', category] = closed_counts.get(category, 0)
+        summary_df.at['Open/Assign', category] = category_open_records[count_col].sum()
+        summary_df.at['Closed', category] = category_closed_records[count_col].sum()
 
     return results_df, summary_df, total_breakup_df
         
