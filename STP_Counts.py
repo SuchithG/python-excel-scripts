@@ -12,8 +12,8 @@ age_categories = {
 }
 
 # Define the function to determine the age category
-def determine_age_category(creation_date, current_date):
-    age_days = (current_date - creation_date).days
+def determine_age_category(creation_date, last_day_previous_month):
+    age_days = (last_day_previous_month - creation_date).days
     for category, max_days in age_categories.items():
         if age_days <= max_days:
             return category
@@ -78,16 +78,13 @@ def process_excel_custom(file_path, categories):
 
     return open_ageing_df, closed_ageing_df, total_ageing_df
 
-# Example usage
 categories = {
     'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
-file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update this with your file path
+file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'
 
-# Process the file and create DataFrames with the results
 open_ageing_df, closed_ageing_df, total_ageing_df = process_excel_custom(file_path, categories)
 
-# Display the DataFrames
 print("Open Ageing DataFrame:")
 print(open_ageing_df)
 print("\nClosed Ageing DataFrame:")
