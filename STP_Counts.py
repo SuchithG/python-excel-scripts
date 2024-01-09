@@ -36,18 +36,26 @@ def process_excel_custom(file_path, categories):
         category_closed_records = pd.DataFrame()
         
         for sheet_name in sheets:
-            # Read the sheet data
-            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+            try:
+                # Read the sheet data
+                sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+                count_col = 'COUNT(*)' if 'COUNT(*)' in sheet_data.columns else "COUNT('*')" if "COUNT('*')" in sheet_data.columns else None
+                if count_col is None:
+                    print(f"Count column not found in sheet {sheet_name}")
+                    continue
 
-            # Concatenate OPEN records
-            open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
-            category_open_records = pd.concat([category_open_records, open_records], ignore_index=True)
+                # Concatenate OPEN records
+                open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
+                category_open_records = pd.concat([category_open_records, open_records], ignore_index=True)
 
-            # Concatenate CLOSED records within the current month
-            closed_records = sheet_data[(sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED') &
-                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] >= current_month_start) &
-                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] <= current_month_end)]
-            category_closed_records = pd.concat([category_closed_records, closed_records], ignore_index=True)
+                # Concatenate CLOSED records within the current month
+                closed_records = sheet_data[(sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED') &
+                                            (sheet_data['TRUNC(LST_NOTFCN_TMS)'] >= current_month_start) &
+                                            (sheet_data['TRUNC(LST_NOTFCN_TMS)'] <= current_month_end)]
+                category_closed_records = pd.concat([category_closed_records, closed_records], ignore_index=True)
+
+            except Exception as e:
+                print(f"Error processing sheet {sheet_name}: {e}")
 
         # Remove duplicates and calculate ageing for OPEN records
         category_open_records.drop_duplicates(subset=['TRUNC(NOTFCN_CRTE_TMS)', 'TRUNC(LST_NOTFCN_TMS)', 'NOTFCN_ID', 'NOTFCN_STAT_TYP'], inplace=True)
@@ -55,7 +63,7 @@ def process_excel_custom(file_path, categories):
             creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, last_day_previous_month)
-                count = pd.to_numeric(row['COUNT(*)'], errors='coerce')
+                count = pd.to_numeric(row[count_col], errors='coerce')
                 open_ageing_df.at[age_category, category] += count
 
         # Remove duplicates and calculate ageing for CLOSED records
@@ -64,22 +72,22 @@ def process_excel_custom(file_path, categories):
             creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
             if pd.notnull(creation_date):
                 age_category = determine_age_category(creation_date, last_day_previous_month)
-                count = pd.to_numeric(row['COUNT(*)'], errors='coerce')
+                count = pd.to_numeric(row[count_col], errors='coerce')
                 closed_ageing_df.at[age_category, category] += count
 
-    return open_ageing_df, closed_ageing_df
+    # Combine OPEN and CLOSED ageing DataFrames
+    total_ageing_df = open_ageing_df.add(closed_ageing_df, fill_value=0)
+
+    return open_ageing_df, closed_ageing_df, total_ageing_df
 
 # Example usage
 categories = {
     'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
-file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update this with your file path
+file_path = '/mnt/data/stp_counts.xlsx'  # Update this with your file path
 
 # Process the file and create DataFrames with the results
-open_ageing_df, closed_ageing_df = process_excel_custom(file_path, categories)
-
-# Combine OPEN and CLOSED ageing DataFrames to create the total_ageing_df
-total_ageing_df = open_ageing_df.add(closed_ageing_df, fill_value=0)
+open_ageing_df, closed_ageing_df, total_ageing_df = process_excel_custom(file_path, categories)
 
 # Display the DataFrames
 print("Open Ageing DataFrame:")
