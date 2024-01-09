@@ -19,7 +19,7 @@ def determine_age_category(creation_date, last_day_previous_month):
             return category
     return '>180 days'  # Default for any case not covered above
 
-def process_excel_custom(file_path, categories):
+def process_excel_custom(file_path, categories, closed_sheets):
     # Define the current date for ageing calculation as the last day of the previous month
     current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_day_previous_month = current_date - pd.Timedelta(days=1)
@@ -76,14 +76,37 @@ def process_excel_custom(file_path, categories):
     # Combine OPEN and CLOSED ageing DataFrames
     total_ageing_df = open_ageing_df.add(closed_ageing_df, fill_value=0)
 
-    return open_ageing_df, closed_ageing_df, total_ageing_df
+    # Initialize the DataFrame for total exceptions
+    total_exceptions_df = pd.DataFrame(index=['Open/Assign', 'Closed'], columns=categories.keys()).fillna(0)
+    
+    # Sum all values for Open/Assign in the total_ageing_df for each category
+    for category in categories.keys():
+        total_exceptions_df.loc['Open/Assign', category] = total_ageing_df[category].sum()
+    
+    # Read each sheet for Closed values and sum the 'COUNT(*)' column
+    for category, sheet_name in closed_sheets.items():
+        try:
+            closed_data = pd.read_excel(file_path, sheet_name=sheet_name)
+            total_exceptions_df.loc['Closed', category] = closed_data['COUNT(*)'].sum()
+        except Exception as e:
+            print(f"Error processing sheet {sheet_name} for closed counts: {e}")
+
+    return open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df 
 
 categories = {
     'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
+
+closed_sheets = {
+    'Equity': 'Line 655',
+    'Loans': 'Line 180',
+    'LD': 'Line 2020',
+    'FI': 'Line 1280'
+}
+
 file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'
 
-open_ageing_df, closed_ageing_df, total_ageing_df = process_excel_custom(file_path, categories)
+open_ageing_df, closed_ageing_df, total_ageing_df, total_exceptions_df  = process_excel_custom(file_path, categories, closed_sheets)
 
 print("Open Ageing DataFrame:")
 print(open_ageing_df)
@@ -91,3 +114,5 @@ print("\nClosed Ageing DataFrame:")
 print(closed_ageing_df)
 print("\nTotal Ageing DataFrame:")
 print(total_ageing_df)
+print("\nTotal exceptions DataFrame:")
+print(total_exceptions_df)
