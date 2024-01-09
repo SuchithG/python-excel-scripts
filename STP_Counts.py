@@ -1,5 +1,14 @@
 import pandas as pd
 from datetime import datetime
+import numpy as np
+
+# Define the message types for each category
+msg_types = {
+    'Loans': ['BBSyndicatedLoans', 'BBSyndicatedLoanBulk', 'BBSyndicatedLoans_S&P','BBSyndicatedLoans_Moodys'],
+    'FI': ['cRDS_iRDS', 'BB_CorpPrefConvGovt_S&P'],
+    'Equity': ['ASX_Security_Masters', 'BBEquityCollateral'],
+    'LD': ['FOWSessionTime','FOWContracts'] 
+    }
 
 # Define the age categories
 age_categories = {
@@ -162,34 +171,26 @@ def process_excel_custom(file_path, categories, closed_sheets):
         except Exception as e:
             print(f"Error processing sheet {sheet_name} for auto counts: {e}")
 
-    # Calculate 'Auto' counts for total_breakup_df using closed_sheets and msg_type
+    # Calculate 'Auto' counts for total_breakup_df using closed_sheets and msg_types
     for category, sheet_name in closed_sheets.items():
         try:
             sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-            
             # Standardize the count column name to 'Count'
             if 'COUNT(*)' in sheet_data.columns:
                 sheet_data.rename(columns={'COUNT(*)': 'Count'}, inplace=True)
             elif "COUNT('*')" in sheet_data.columns:
                 sheet_data.rename(columns={"COUNT('*')": 'Count'}, inplace=True)
 
-            # Ensure there are no NaN values before summing
-            sheet_data['Count'].fillna(0, inplace=True)
+            # Ensure the 'Count' column is numeric
+            sheet_data['Count'] = pd.to_numeric(sheet_data['Count'], errors='coerce').fillna(0)
 
-            # Define the message types for each category
-            msg_types = {
-                'Loans': ['BBSyndicatedLoans', 'BBSyndicatedLoanBulk', 'BBSyndicatedLoans_S&P','BBSyndicatedLoans_Moodys'],
-                'FI': ['cRDS_iRDS', 'BB_CorpPrefConvGovt_S&P'],
-                'Equity': ['ASX_Security_Masters', 'BBEquityCollateral'],
-                'LD': ['FOWSessionTime','FOWContracts'] 
-            }
+            # Build a filter for 'Auto' based on 'LAST_CHG_USR_ID' values
+            auto_conditions = [sheet_data['LAST_CHG_USR_ID'].astype(str).str.contains(pat, case=False, na=False) for pat in msg_types[category]]
+            auto_conditions.append(sheet_data['LAST_CHG_USR_ID'].astype(str).str.contains('Auto', case=False, na=False))
+            auto_filter = np.logical_or.reduce(auto_conditions)
 
-            # Filter records for auto counts
-            auto_filter = (sheet_data['LAST_CHG_USR_ID'].astype(str).str.contains('Auto', case=False) |
-                        sheet_data['LAST_CHG_USR_ID'].astype(str).str.endswith('.txt') |
-                        sheet_data['MSG_TYP'].isin(msg_types.get(category, [])))
-            auto_counts = sheet_data.loc[auto_filter, 'Count'].sum()
-            total_breakup_df.at['Auto', category] = auto_counts
+            # Calculate the sum of 'Auto' counts
+            total_breakup_df.at['Auto', category] = sheet_data.loc[auto_filter, 'Count'].sum()
         except Exception as e:
             print(f"Error processing sheet {sheet_name} for auto counts: {e}")
 
