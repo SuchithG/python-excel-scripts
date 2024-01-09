@@ -1,121 +1,90 @@
 import pandas as pd
 from datetime import datetime
 
-# Define the age categories as per the new logic
+# Define the age categories
+age_categories = {
+    '0-1 New': 1,
+    '02-07 days': 7,
+    '08-15 days': 15,
+    '16-30 days': 30,
+    '31-180 days': 180,
+    '>180 days': float('inf')
+}
+
+# Define the function to determine the age category
 def determine_age_category(creation_date, current_date):
-    previous_month_end = current_date.replace(day=1) - pd.Timedelta(days=1)
-    previous_month_start = previous_month_end.replace(day=1)
+    age_days = (current_date - creation_date).days
+    for category, max_days in age_categories.items():
+        if age_days <= max_days:
+            return category
+    return '>180 days'  # Default for any case not covered above
 
-    if previous_month_start <= creation_date <= previous_month_end:
-        day_of_month = creation_date.day
-        if day_of_month >= 30:  # 30th and 31st
-            return '0-1 New'
-        elif day_of_month >= 25:  # 25th to 29th
-            return '02-07 days'
-        elif day_of_month >= 16:  # 16th to 24th
-            return '08-15 days'
-        else:  # First 15 days
-            return '16-30 days'
-    elif creation_date < previous_month_start - pd.Timedelta(days=180):
-        return '>180 days'
-    else:  # Previous month and up to 180 days
-        return '31-180 days'
-
-def process_excel_custom(file_path, categories, current_date, summary_sheets):
-    # Define the start and end of the current month for CLOSED records
+def process_excel_custom(file_path, categories):
+    # Define the current date for ageing calculation as the last day of the previous month
+    current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_day_previous_month = current_date - pd.Timedelta(days=1)
     current_month_start = current_date.replace(day=1)
     current_month_end = current_date.replace(day=1, month=current_date.month % 12 + 1) - pd.Timedelta(days=1)
 
-    # Initialize the DataFrames
-    results_df = pd.DataFrame(index=['0-1 New', '02-07 days', '08-15 days', '16-30 days', '31-180 days', '>180 days'], columns=categories.keys()).fillna(0)
-    summary_df = pd.DataFrame(index=['Open/Assign', 'Closed'], columns=categories.keys()).fillna(0)
-    total_breakup_df = pd.DataFrame(index=['Bulk', 'Manual', 'Auto', 'Open'], columns=categories.keys()).fillna(0)
+    # Initialize the DataFrames for open and closed ageing
+    open_ageing_df = pd.DataFrame(index=age_categories.keys(), columns=categories.keys()).fillna(0)
+    closed_ageing_df = pd.DataFrame(index=age_categories.keys(), columns=categories.keys()).fillna(0)
 
-    # Process each category separately
+    # Process OPEN and CLOSED records for each category
     for category, sheets in categories.items():
-        # Collect OPEN and CLOSED records separately
-        open_records = pd.DataFrame()
-        closed_records = pd.DataFrame()
-
-        for sheet_name in sheets:
-            try:
-                # Read the sheet data
-                sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
-                # Identify the count column
-                count_col = 'COUNT(*)' if 'COUNT(*)' in sheet_data.columns else "COUNT('*')" if "COUNT('*')" in sheet_data.columns else None
-                if count_col is None:
-                    print(f"Count column not found in sheet {sheet_name}")
-                    continue
-
-                # Convert the date columns to datetime
-                sheet_data['TRUNC(NOTFCN_CRTE_TMS)'] = pd.to_datetime(sheet_data['TRUNC(NOTFCN_CRTE_TMS)'], errors='coerce')
-                sheet_data['TRUNC(LST_NOTFCN_TMS)'] = pd.to_datetime(sheet_data['TRUNC(LST_NOTFCN_TMS)'], errors='coerce')
-
-                # Append to OPEN or CLOSED records
-                open_records = open_records.append(sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN'])
-                closed_records = closed_records.append(sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED'])
-
-            except Exception as e:
-                print(f"Error processing sheet {sheet_name}: {e}")
-
-        # Filter CLOSED records by date within the current month
-        closed_records = closed_records[(closed_records['TRUNC(LST_NOTFCN_TMS)'] >= current_month_start) & (closed_records['TRUNC(LST_NOTFCN_TMS)'] <= current_month_end)]
-
-        # Combine OPEN and CLOSED records and remove duplicates
-        combined_records = pd.concat([open_records, closed_records]).drop_duplicates()
-
-        # Calculate ageing for the combined records
-        for _, row in combined_records.iterrows():
-            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
-            if pd.isnull(creation_date) or pd.isnull(row[count_col]):
-                continue
-            age_category = determine_age_category(creation_date, current_date)
-            count = pd.to_numeric(row[count_col], errors='coerce')
-            results_df.at[age_category, category] += count
-
-    # Calculate summary values for OPEN and CLOSED
-    for category in summary_sheets:
-        closed_sheet_name = summary_sheets[category]
-        try:
-            closed_data = pd.read_excel(file_path, sheet_name=closed_sheet_name)
-            count_col = 'COUNT(*)' if 'COUNT(*)' in closed_data.columns else "COUNT('*')" if "COUNT('*')" in closed_data.columns else None
-            if count_col:
-                summary_df.at['Closed', category] = closed_data[count_col].sum()
-        except Exception as e:
-            print(f"Error processing summary sheet {closed_sheet_name}: {e}")
-
-    for category in categories:
-        summary_df.at['Open/Assign', category] = results_df[category].sum()
-
-    # Return the DataFrames
-    return results_df, summary_df, total_breakup_df
+        category_open_records = pd.DataFrame()
+        category_closed_records = pd.DataFrame()
         
+        for sheet_name in sheets:
+            # Read the sheet data
+            sheet_data = pd.read_excel(file_path, sheet_name=sheet_name)
+
+            # Concatenate OPEN records
+            open_records = sheet_data[sheet_data['NOTFCN_STAT_TYP'] == 'OPEN']
+            category_open_records = pd.concat([category_open_records, open_records], ignore_index=True)
+
+            # Concatenate CLOSED records within the current month
+            closed_records = sheet_data[(sheet_data['NOTFCN_STAT_TYP'] == 'CLOSED') &
+                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] >= current_month_start) &
+                                        (sheet_data['TRUNC(LST_NOTFCN_TMS)'] <= current_month_end)]
+            category_closed_records = pd.concat([category_closed_records, closed_records], ignore_index=True)
+
+        # Remove duplicates and calculate ageing for OPEN records
+        category_open_records.drop_duplicates(subset=['TRUNC(NOTFCN_CRTE_TMS)', 'TRUNC(LST_NOTFCN_TMS)', 'NOTFCN_ID', 'NOTFCN_STAT_TYP'], inplace=True)
+        for _, row in category_open_records.iterrows():
+            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
+            if pd.notnull(creation_date):
+                age_category = determine_age_category(creation_date, last_day_previous_month)
+                count = pd.to_numeric(row['COUNT(*)'], errors='coerce')
+                open_ageing_df.at[age_category, category] += count
+
+        # Remove duplicates and calculate ageing for CLOSED records
+        category_closed_records.drop_duplicates(subset=['TRUNC(NOTFCN_CRTE_TMS)', 'TRUNC(LST_NOTFCN_TMS)', 'NOTFCN_ID', 'NOTFCN_STAT_TYP'], inplace=True)
+        for _, row in category_closed_records.iterrows():
+            creation_date = row['TRUNC(NOTFCN_CRTE_TMS)']
+            if pd.notnull(creation_date):
+                age_category = determine_age_category(creation_date, last_day_previous_month)
+                count = pd.to_numeric(row['COUNT(*)'], errors='coerce')
+                closed_ageing_df.at[age_category, category] += count
+
+    return open_ageing_df, closed_ageing_df
+
 # Example usage
-current_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
 categories = {
-    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088'],
-    #'Loans': ['Line 270', 'Line 297', 'Line 441', 'Line 447', 'Line 523'],
-    #'FI': ['Line 1616', 'Line 1407', 'Line 1727', 'Line 1843'],
-    #'LD': ['Line 2104', 'Line 2261', 'Line 2325', 'Line 2389']
+    'Equity': ['Line 764', 'Line 809', 'Line 970', 'Line 1024', 'Line 1088']
 }
-
-summary_sheets = {
-    'Equity': 'Line 655',
-    'Loans': 'Line 180',
-    'FI': 'Line 1280',
-    'LD': 'Line 2020'
-}
-
 file_path = 'C:/Users/Suchith G/Documents/Test Docs/stp_counts.xlsx'  # Update this with your file path
 
 # Process the file and create DataFrames with the results
-results_df, summary_df, total_breakup_df  = process_excel_custom(file_path, categories, current_date, summary_sheets)
+open_ageing_df, closed_ageing_df = process_excel_custom(file_path, categories)
+
+# Combine OPEN and CLOSED ageing DataFrames to create the total_ageing_df
+total_ageing_df = open_ageing_df.add(closed_ageing_df, fill_value=0)
 
 # Display the DataFrames
-print("Ageing DataFrame:")
-print(results_df)
-print("\nSummary DataFrame:")
-print(summary_df)
-print("\nTotal Breakup DataFrame:")
-print(total_breakup_df)
+print("Open Ageing DataFrame:")
+print(open_ageing_df)
+print("\nClosed Ageing DataFrame:")
+print(closed_ageing_df)
+print("\nTotal Ageing DataFrame:")
+print(total_ageing_df)
