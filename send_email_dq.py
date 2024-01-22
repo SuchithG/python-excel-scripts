@@ -56,14 +56,18 @@ def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
 def add_total_row(df, columns_to_sum):
     # Calculate the total for each column and create a total row
     total_row = {column: df[column].sum() if column in columns_to_sum else '' for column in df.columns}
-    total_row[df.columns[0]] = 'Total' # Set 'Total' label in the first column 
+    total_row[df.columns[0]] = 'Total'  # Set 'Total' label in the first column 
+
     # Create a DataFrame of the total row
     total_row_df = pd.DataFrame([total_row])
-    # Concatenated the total row DataFrame to the original DataFrame
-    df_with_total = pd.concat([df, total_row_df], ignore_index=True)
-    # Convert all numeric columns to integers, ignoring non-numeric columns
+
+    # Ensure that the total for each column in columns_to_sum is an integer
     for column in columns_to_sum:
-        df_with_total[column] = df_with_total[column].astype(int)
+        total_row_df[column] = total_row_df[column].astype(int)
+
+    # Concatenate the total row DataFrame to the original DataFrame
+    df_with_total = pd.concat([df, total_row_df], ignore_index=True)
+
     return df_with_total 
 
 def process_and_send_email_with_tables():
