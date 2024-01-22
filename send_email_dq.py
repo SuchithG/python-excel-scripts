@@ -140,11 +140,14 @@ def process_and_send_email_with_tables():
         for col in df.columns[2:]:
             if pd.api.types.is_numeric_dtype(df[col]):
                 df[col] = df[col].fillna(0).astype(int)
+    
+    def df_to_html_with_integers(df):
+        return df.to_html(index=False, float_format=lambda x: '%10.0f' % x)
 
     # Generate HTML tables for both
-    table_by_process_activity_html = aggregated_by_process_activity_with_total.to_html(index=False) if not aggregated_by_process_activity.empty else "<p>No data available for previous working day</p>"
-    table_by_proactive_checks_html = aggregated_by_proactive_checks_with_total.to_html(index=False) if not aggregated_by_proactive_checks.empty else "<p>No data available for previous working day</p>"
-    table_by_resource_name_html = aggregated_by_resource_name_with_total.to_html(index=False) if not aggregated_by_resource_name.empty else "<p>No data available for previous working day</p>"
+    table_by_process_activity_html = df_to_html_with_integers(aggregated_by_process_activity_with_total) if not aggregated_by_process_activity.empty else "<p>No data available for previous working day</p>"
+    table_by_proactive_checks_html = df_to_html_with_integers(aggregated_by_proactive_checks_with_total) if not aggregated_by_proactive_checks.empty else "<p>No data available for previous working day</p>"
+    table_by_resource_name_html = df_to_html_with_integers(aggregated_by_resource_name_with_total) if not aggregated_by_resource_name.empty else "<p>No data available for previous working day</p>"
 
     body = f"""
     <html>
