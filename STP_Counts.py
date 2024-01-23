@@ -31,12 +31,53 @@ def days_in_month(year, month):
     else:
         return 31
 
-# Define the function to determine the age category
 def determine_age_category(creation_date, last_day_previous_month):
+    year, month = last_day_previous_month.year, last_day_previous_month.month
+    days_previous_month = days_in_month(year, month)
+
     age_days = (last_day_previous_month - creation_date).days
-    for category, max_days in age_categories.items():
-        if age_days <= max_days:
-            return category
+
+    # Adjust the age categories based on the specific days of the month
+    if days_previous_month == 30:
+        if age_days <= 1: # 0-1 New
+            return '0-1 New'
+        elif age_days <= 6: # 2-7 Days
+            return '02-07 days'
+        elif age_days <= 14: # 8-15 Days
+            return '08-15 days'
+        elif age_days <= 29: # 16-30 Days
+            return '16-30 days'
+        elif age_days <= 180: # 31-180 Days
+            return '31-180 days'
+        else: # Beyond 180 days
+            return '>180 days'
+    elif days_previous_month == 31 or (month == 2 and is_leap_year(year)):
+        if age_days <= 1: # 0-1 New
+            return '0-1 New'
+        elif age_days <= 6: # 2-7 Days
+            return '02-07 days'
+        elif age_days <= 15: # 8-15 Days
+            return '08-15 days'
+        elif age_days <= 30: # 16-30 Days
+            return '16-30 days'
+        elif age_days <= 180: # 31-180 Days
+            return '31-180 days'
+        else: # Beyond 180 days
+            return '>180 days'
+    elif month == 2 and not is_leap_year(year): # Non-leap year February
+        if age_days <= 1: # 0-1 New
+            return '0-1 New'
+        elif age_days <= 5: # 2-7 Days
+            return '02-07 days'
+        elif age_days <= 13: # 8-15 Days
+            return '08-15 days'
+        elif age_days <= 27: # 16-30 Days
+            return '16-30 days'
+        elif age_days <= 180: # 31-180 Days
+            return '31-180 days'
+        else: # Beyond 180 days
+            return '>180 days'
+
     return '>180 days'  # Default for any case not covered above
 
 def process_excel_custom(file_path, categories, closed_sheets):
