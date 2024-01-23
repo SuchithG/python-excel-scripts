@@ -45,6 +45,9 @@ def transform_data(input_directory, output_file_path):
     pivot_data['Total OPEN'] = pivot_data[['P1 OPEN', 'P2 OPEN', 'P3 OPEN']].sum(axis=1)
     pivot_data['Total Volume'] = pivot_data[['Total P1', 'Total P2', 'Total P3']].sum(axis=1)
     pivot_data['OPEN Percentage'] = round((pivot_data['Total OPEN'] / pivot_data['Total Volume']).fillna(0) * 100, 1)
+    pivot_data['OPEN Percentage'] = pivot_data['OPEN Percentage'].apply(lambda x: 0 if x == 0.0 else (1 if x == 1.0 else x))
+    pivot_data['OPEN Percentage'] = pivot_data['OPEN Percentage'].apply(lambda x: int(x) if x.is_integer() else x)
+    pivot_data['OPEN Percentage'] = pivot_data['OPEN Percentage'].apply(lambda x: str(x) + '%')
 
     # Add the 'Month/Year' column to the dataframe, formatted as 'Oct-2023'
     pivot_data['Month/Year'] = last_month.strftime('%b-%Y')
@@ -63,9 +66,9 @@ def transform_data(input_directory, output_file_path):
 
     # Save the transformed data to an Excel file
     final_output.to_excel(output_file_path, index=False)
-    print(f"Data transformation complete. Output saved to: {output_file_path}")
+    return "Data transformation complete. Output saved to: " + output_file_path
 
 # Example usage of the script
 input_directory = '/path/to/your/input/directory'
-output_file_path = '/path/to/your/output/file.xlsx'
+output_file_path = '/path/to/your/output/V&C Securitization Data UAT.xlsx'
 print(transform_data(input_directory, output_file_path))
