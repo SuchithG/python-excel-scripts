@@ -20,6 +20,17 @@ age_categories = {
     '>180 days': float('inf')
 }
 
+def is_leap_year(year):
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+
+def days_in_month(year, month):
+    if month == 2:
+        return 29 if is_leap_year(year) else 28
+    elif month in [4, 6, 9, 11]:
+        return 30
+    else:
+        return 31
+
 # Define the function to determine the age category
 def determine_age_category(creation_date, last_day_previous_month):
     age_days = (last_day_previous_month - creation_date).days
