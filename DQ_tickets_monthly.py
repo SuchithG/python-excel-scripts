@@ -12,8 +12,8 @@ previous_month_year_str = get_previous_month_year_str()
 print(previous_month_year_str)
 
 # Paths to the input files
-input_file_path = r'G:\girisuc\RDS Dashboard\RDS monthly tickets inputs\RDS_MONTHLY_REPORT_TEMPLAT_{}.xlsx'.format(previous_month_year_str)
-sla_file_path = r'G:\girisuc\RDS Dashboard\RDS SLA.xlsx'
+input_file_path = f'G:\girisuc\RDS Dashboard\RDS monthly tickets inputs\RDS_MONTHLY_REPORT_TEMPLAT_{previous_month_year_str}.xlsx'
+sla_file_path = r'G:\girisuc\RDS Dashboard\DQ SLA.xlsx'
 
 # Paths to the output file
 output_file_path = f'G:\\girisuc\\RDS Dashboard\\RDS tickets monthly\\RDS tickets output - {previous_month_year_str}_UAT.xlsx'
@@ -22,8 +22,8 @@ output_file_path = f'G:\\girisuc\\RDS Dashboard\\RDS tickets monthly\\RDS ticket
 input_df = pd.read_excel(input_file_path)
 
 # Convert date & time columns to the correct format
-input_df['Incident Start Date & Time'] = pd.to_datetime(input_df['Incident Start Date & Time']).dt.strftime('%m/%d/%Y %H:%M:%S')
-input_df['Incident End Date & Time'] = pd.to_datetime(input_df['Incident End Date & Time']).dt.strftime('%m/%d/%Y %H:%M:%S')
+input_df['Incident Start Date & Time'] = pd.to_datetime(input_df['Incident Start Date & Time']).dt.strftime('%m/%d/%Y %I:%M:%S %p')
+input_df['Incident End Date & Time'] = pd.to_datetime(input_df['Incident End Date & Time']).dt.strftime('%m/%d/%Y %I:%M:%S %p')
 
 # Read the SLA Excel file
 sla_df = pd.read_excel(sla_file_path)
@@ -31,8 +31,8 @@ sla_df = pd.read_excel(sla_file_path)
 # Convert the 'Incident Duration Excluding GMT Weekends (Seconds)' to hours and round to two decimal places
 input_df['Time in HRS'] = round(input_df['Incident Duration Excluding GMT Weekends (Seconds)'] / 3600, 2)
 
-# Rename the 'Incident categorized' column in sla_df to match 'Incident External Reference' in input_df for merging
-sla_df.rename(columns={'Incident categorized': 'Incident External Reference'}, inplace=True)
+# Rename the 'SLA Desc' column in sla_df to match 'Incident External Reference' in input_df for merging
+sla_df.rename(columns={'SLA Desc': 'Incident External Reference'}, inplace=True)
 
 # Merge the input dataframe with the SLA dataframe based on 'Incident External Reference'
 merged_df = pd.merge(input_df, sla_df, on='Incident External Reference', how='left')
