@@ -55,20 +55,18 @@ def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
 
 def add_total_row(df, columns_to_sum):
     # Calculate the total for each column and create a total row
-    total_row = {column: df[column].sum() if column in columns_to_sum else 'Total' for column in df.columns}
+    total_row = {column: df[column].sum() if column in columns_to_sum else '' for column in df.columns}
     total_row[df.columns[0]] = 'Total'  # Set 'Total' label in the first column
-
-    # Adjust for non-summable (non-numeric) columns, set them to 'Total' or some other appropriate string
-    for column in df.columns:
-        if column not in columns_to_sum:
-            total_row[column] = 'Total'
-
-    # Create a DataFrame of the total row
-    total_row_df = pd.DataFrame([total_row])
 
     # Ensure that the total for each numeric column is an integer
     for column in columns_to_sum:
-        total_row_df[column] = total_row_df[column].astype(int)
+        total_row[column] = int(total_row[column])
+
+    # Ensure 'Total Count' is calculated correctly
+    total_row['Total Count'] = int(df[columns_to_sum].sum(axis=1).sum())
+
+    # Create a DataFrame of the total row
+    total_row_df = pd.DataFrame([total_row])
 
     # Concatenate the total row DataFrame to the original DataFrame
     df_with_total = pd.concat([df, total_row_df], ignore_index=True)
