@@ -3,10 +3,12 @@ from itertools import product
 from datetime import datetime, timedelta
 import glob
 import os
+import time
 
 # Define previous month details
 previous_month_date = (datetime.now().replace(day=1) - timedelta(days=1))
 previous_month_name = previous_month_date.strftime("%b_%Y").upper()
+uniform_month_year = previous_month_date.strftime("%b-%y") # Uniform Month/Year for all rows
 
 # Load the data from the Excel file
 file_path = f"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Exception_Trends_Monthly_Inputs/uRDSandFDW_{previous_month_name}.xlsx"  # Replace with the actual path
@@ -153,36 +155,60 @@ combined_output_file_path = f"G:/girisuc/DQ CDE's Metrics and FDW Securitization
 combined_final_df.to_excel(combined_output_file_path, index=False)
 print(f"Combined final_df and final_df_tranche saved to {combined_output_file_name}")
 
+# Wait for 10 seconds
+time.sleep(20)
+
 # Define the folder path where the Excel files are located
 folder_path = r"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Exception_Trends_Monthly/"
 
 # Use glob to get all the excel files in the folder
 excel_files = glob.glob(folder_path + '*.xlsx')
 
-# Initialize an empty list to hold dataframes
-all_dataframes = []
+if not excel_files:
+    print("No Excel files found in the directory")
+else:
+    # Initialize an empty list to hold dataframes
+    all_dataframes = []
 
-# Loop through the Excel files and append them to the list
-for file in excel_files:
-    # Determine the engine based on file extension
-    _, file_extension = os.path.splitext(file)
-    if file_extension == '.xlsx':
-        engine = 'openpyxl'
-    elif file_extension == '.xls':
-        engine = 'xlrd'
-    else:
-        continue  # Skip non-Excel files
+    # Loop through the Excel files and append them to the list
+    for file in excel_files:
+        try:
+            print(f"Processing file: {file} ")
+            _, file_extension = os.path.splitext(file)
+            if file_extension == '.xlsx':
+                df = pd.read_excel(file, engine = 'openpyxl')
+            elif file_extension == '.xls':
+                df = pd.read_excel(file, engine = 'xlrd')
+            else:
+                continue  # Skip non-Excel files
+            all_dataframes.append(df)
+        except Exception as e:
+            print(f"An error occured with file: {file}. Error: {e}")
 
-    df = pd.read_excel(file, engine=engine)
-    all_dataframes.append(df)
+if all_dataframes:
+    # Concatenate all dataframes in the list
+    combined_excel_df = pd.concat(all_dataframes, ignore_index=True)
 
-# Concatenate all dataframes in the list
-combined_excel_df = pd.concat(all_dataframes, ignore_index=True)
+    def convert_month_year(my):
+        try:
+            return pd.to_datetime(my, format='%b-%y', errors='coerce')
+        except ValueError:
+            try:
+                return pd.to_datetime(my, format='%m/%d/%Y', errors='coerce')
+            except ValueError:
+                return pd.NaT
+            
+    # Apply the conversion function to the 'Month/Year' column
+    combined_excel_df['Month/Year'] = combined_final_df['Month/Year'].apply(convert_month_year)
 
-# Define the path for the output Excel file
-output_file_path = r"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Tableau REF/ExceptionTrends Tableau Input/ExceptionTrends_UAT.xlsx" 
+    # Sort the DataFrame by the 'Month/Year' column
+    combined_excel_df.sort_values(by='Month/Year', inplace=True)
 
-# Save the combined dataframe from all Excel files into one file
-combined_excel_df.to_excel(output_file_path, index=False)
+    # Define the path for the output Excel file
+    output_file_path = r"G:/girisuc/DQ CDE's Metrics and FDW Securitization/Tableau REF/ExceptionTrends Tableau Input/ExceptionTrends_UAT.xlsx" 
 
-print(f"All Excel files combined and saved to {output_file_path}")
+    # Save the combined dataframe from all Excel files into one file
+    combined_excel_df.to_excel(output_file_path, index=False)
+    print(f"All Excel files combined and saved to {output_file_path}")
+else:
+    print("No dataframe were created from the file.")
