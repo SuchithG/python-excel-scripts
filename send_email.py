@@ -7,29 +7,28 @@ from email import encoders
 import pandas as pd
 from datetime import datetime, timedelta
 
-def previous_working_day(today=None, check_saturday=True):
+def data_exists_for_date(date, df):
+    """Placeholder function to check if data exists for a given date in the DataFrame."""
+    # Implement the actual logic to check for data availability
+    # For example, return True if there's data for the specified date
+    return not df[df['Date'] == date].empty
+
+def previous_working_day(today=None, df=None):
     """Compute the previous working day, considering Saturday if needed."""
     if today is None:
         today = datetime.now().date()
-    
-    if today.weekday() == 0 and check_saturday:  # If today is Monday
+
+    if today.weekday() == 0:  # If today is Monday
         # Check for data on Saturday
         saturday = today - timedelta(days=2)
-        # Here, you would have logic to check if there is data for Saturday
-        # For example, if data_exists_for_date(saturday) returns False, use Friday
-        # Assuming a function data_exists_for_date() that returns True or False
-        if not data_exists_for_date(saturday):  # Placeholder for actual data check
-            return saturday - timedelta(days=1)  # Use Friday
-        return saturday
+        if data_exists_for_date(saturday, df):  # Assuming data for Saturday
+            return saturday
+        else:  # If no data for Saturday, use previous Friday
+            return saturday - timedelta(days=1)
     else:
-        # For other days, use the standard logic to find the previous working day
+        # Standard logic for other days
         offset = 1 if today.weekday() != 0 else 3
         return today - timedelta(days=offset)
-
-# Helper function (placeholder) to check if data exists for a given date
-def data_exists_for_date(date):
-    # Implement the actual logic to check for data availability
-    return False  # Placeholder return value
 
 # Define prev_work_day as a global variable
 prev_work_day = previous_working_day()
