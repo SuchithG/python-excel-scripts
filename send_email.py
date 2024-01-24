@@ -7,13 +7,29 @@ from email import encoders
 import pandas as pd
 from datetime import datetime, timedelta
 
-def previous_working_day(today=None):
-    """Compute the previous working day."""
+def previous_working_day(today=None, check_saturday=True):
+    """Compute the previous working day, considering Saturday if needed."""
     if today is None:
         today = datetime.now().date()
     
-    offset = 1 if today.weekday() != 0 else 3
-    return today - timedelta(days=offset)
+    if today.weekday() == 0 and check_saturday:  # If today is Monday
+        # Check for data on Saturday
+        saturday = today - timedelta(days=2)
+        # Here, you would have logic to check if there is data for Saturday
+        # For example, if data_exists_for_date(saturday) returns False, use Friday
+        # Assuming a function data_exists_for_date() that returns True or False
+        if not data_exists_for_date(saturday):  # Placeholder for actual data check
+            return saturday - timedelta(days=1)  # Use Friday
+        return saturday
+    else:
+        # For other days, use the standard logic to find the previous working day
+        offset = 1 if today.weekday() != 0 else 3
+        return today - timedelta(days=offset)
+
+# Helper function (placeholder) to check if data exists for a given date
+def data_exists_for_date(date):
+    # Implement the actual logic to check for data availability
+    return False  # Placeholder return value
 
 # Define prev_work_day as a global variable
 prev_work_day = previous_working_day()
