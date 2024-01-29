@@ -70,18 +70,15 @@ def send_email_with_table(subject, df, body, to_email, attachment_path):
         print(f"Error occurred: {e}")
 
 def process_and_send_email():
-    # Load and filter data
-    df = pd.read_excel("/path/to/your/excel_file.xlsx")
+    try:
+        df = pd.read_excel("/path/to/your/excel_file.xlsx")
+        df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
+    except Exception as e:
+        return f"Error loading data: {e}"
 
-    # Convert 'Date' column to datetime format
-    df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
-
-    # Filter data for previous working day and 'APAC' region
     filtered_data = filtered_data_for_previous_working_day(df)
-
-    # If no data for the previous working day, print a statement and exit
-    if filtered_data.empty:
-        return f"No data available for the previous working day ({prev_work_day})."
+    if filtered_data is None:
+        return f"No data available for the previous working day."
 
     # Calculate the '2 eye count' table for the filtered data
     aggregated_2_eye_data = filtered_data.groupby(['Date', '2 eye']).agg({
