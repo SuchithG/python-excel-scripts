@@ -8,7 +8,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def data_exists_for_date(date, df):
-    if df is None:
+    if df is None or df.empty:
         return False
     return not df[df['Date'] == date].empty
 
@@ -33,8 +33,10 @@ def filtered_data_for_previous_working_day(df):
     if df is None:
         return None
     prev_work_day = previous_working_day(df=df)
-    filtered_df = df[(df['Date'] == prev_work_day) & (df['Region'] == 'APAC')]
-    return filtered_df if not filtered_df.empty else None
+    if prev_work_day is None:
+        return None
+    filtered_df = df[df['Date'] == prev_work_day]
+    return filtered_df[filtered_df['Region'] == 'APAC'] if not filtered_df.empty else None
 
 
 def send_email_with_table(subject, df, body, to_email, attachment_path):
