@@ -79,7 +79,7 @@ def process_and_send_email():
         return f"Error loading data: {e}"
 
     filtered_data = filtered_data_for_previous_working_day(df)
-    if filtered_data is None:
+    if filtered_data is None or filtered_data.empty:
         return f"No data available for the previous working day."
 
     # Calculate the '2 eye count' table for the filtered data
