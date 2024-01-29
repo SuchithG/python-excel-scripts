@@ -8,25 +8,21 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def data_exists_for_date(date, df):
-    """Placeholder function to check if data exists for a given date in the DataFrame."""
-    # Implement the actual logic to check for data availability
-    # For example, return True if there's data for the specified date
+    if df is None:
+        return False
     return not df[df['Date'] == date].empty
 
 def previous_working_day(today=None, df=None):
-    """Compute the previous working day, considering Saturday if needed."""
     if today is None:
         today = datetime.now().date()
 
     if today.weekday() == 0:  # If today is Monday
-        # Check for data on Saturday
         saturday = today - timedelta(days=2)
-        if data_exists_for_date(saturday, df):  # Assuming data for Saturday
+        if data_exists_for_date(saturday, df):
             return saturday
-        else:  # If no data for Saturday, use previous Friday
+        else:
             return saturday - timedelta(days=1)
     else:
-        # Standard logic for other days
         offset = 1 if today.weekday() != 0 else 3
         return today - timedelta(days=offset)
 
@@ -34,9 +30,11 @@ def previous_working_day(today=None, df=None):
 prev_work_day = previous_working_day()
 
 def filtered_data_for_previous_working_day(df):
-    """Filter data for the previous working day and 'APAC' region."""
-    prev_work_day = previous_working_day()
-    return df[(df['Date'] == prev_work_day) & (df['Region'] == 'APAC')]
+    if df is None:
+        return None
+    prev_work_day = previous_working_day(df=df)
+    filtered_df = df[(df['Date'] == prev_work_day) & (df['Region'] == 'APAC')]
+    return filtered_df if not filtered_df.empty else None
 
 
 def send_email_with_table(subject, df, body, to_email, attachment_path):
