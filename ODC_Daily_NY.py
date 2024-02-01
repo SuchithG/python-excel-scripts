@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 start_time = time.time()
 
@@ -30,12 +30,33 @@ def parse_date(date_input):
 
     return None
 
-# Function to get the current month in the required format
-def get_current_month():
-    return datetime.now().strftime('%b-%y')
+# Function to check if data exists for a given date in a specific file
+def data_exists_for_date(file_path, date):
+    try:
+        df = pd.read_excel(file_path)
+        df['Date'] = pd.to_datetime(df['Date'])
+        return not df[df['Date'] == date].empty
+    except Exception as e:
+        print(f"Error checking data in file {file_path}: {e}")
+        return False
+    
+# Function to get the previous working day
+def get_previous_working_day(folder_path):
+    today = datetime.now()
+    if today.weekday() == 0:  # Monday
+        last_saturday = today - timedelta(days=2)
+        # Check if there is data for last Saturday
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".xlsm.xlsx") and not filename.startswith("~$"):
+                file_path = os.path.join(folder_path, filename)
+                if data_exists_for_date(file_path, last_saturday):
+                    return last_saturday
+        return today - timedelta(days=3)  # Return last Friday
+    else:
+        return today - timedelta(days=1)
 
-current_month = get_current_month()
-print(f"Filtering data for the month: {current_month}")
+previous_working_day = get_previous_working_day(folder_path)
+print(f"Filtering data for the month: {previous_working_day}")
 
 if not os.path.exists(output_folder_path):
     os.makedirs(output_folder_path)
@@ -71,7 +92,7 @@ else:
                     df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime("%Y-%m-%d")
                     
                     # Keep only rows where necessary columns are not null
-                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == current_month)]
+                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == previous_working_day)]
                     
                     if not df.empty:
                         dfs.append(df)
