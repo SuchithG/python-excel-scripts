@@ -6,18 +6,16 @@ from datetime import datetime, timedelta
 start_time = time.time()
 
 folder_path = "path1"
-
 output_folder_path = "output_path"
 
 def get_previous_working_day():
     today = datetime.now()
-    if today.weekday() == 0:  # Monday
-        return today - timedelta(days=3)
-    else:
-        return today - timedelta(days=1)
+    offset = 1 if today.weekday() > 0 else 3  # if today is Monday, offset by 3, otherwise 1
+    previous_day = today - timedelta(days=offset)
+    return previous_day.strftime("%d-%b-%y")  # Format as 'dd-Mon-yy'
 
-previous_working_day = get_previous_working_day()
-print(f"Filtering data for the month: {previous_working_day}")
+previous_working_day_str = get_previous_working_day()
+print(f"Filtering data for the date: {previous_working_day_str}")
 
 if not os.path.exists(output_folder_path):
     os.makedirs(output_folder_path)
@@ -42,32 +40,25 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path)
+                df = pd.read_excel(file_path, parse_dates=["Date"], date_parser=lambda x: pd.to_datetime(x, format='%d-%b-%y'))
                 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
-
-                    # Covert 'Date' and 'Actual Date of upload' columns
-                    df['Date'] = df['Date'].apply(lambda x: f"{x.month}/{x.day}/{x.year}")
-                    df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime("%Y-%m-%d")
                     
-                    # Keep only rows where necessary columns are not null
-                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == previous_working_day)]
+                    # Convert 'Date' column to string for comparison
+                    df['Date'] = df['Date'].dt.strftime("%d-%b-%y")
+                    
+                    # Keep only rows where 'Date' matches the previous working day
+                    df = df[df['Date'] == previous_working_day_str]
                     
                     if not df.empty:
                         dfs.append(df)
                         print(f"Added data from file: {filename}")
                     else:
-                        print(f"File {filename} does not contain valid data. Skipping...")
+                        print(f"File {filename} does not contain data for {previous_working_day_str}. Skipping...")
             
             except Exception as e:
-                print(f"Could not read file {filename} with header. Error: {e}")
-                try:
-                    pd.read_excel(file_path, header=None)
-                    print(f"File {filename} read without header. Skipping...")
-                except Exception as e:
-                    print(f"Could not read file {filename} without header. Error: {e}")
-                    pass
+                print(f"Could not read file {filename}. Error: {e}")
 
 # After concatenating all data frames
 if dfs:
