@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 start_time = time.time()
 
@@ -9,12 +9,15 @@ folder_path = "path1"
 
 output_folder_path = "output_path"
 
-# Function to get the current month in the required format
-def get_current_month():
-    return datetime.now().strftime('%b-%y')
+def get_previous_working_day():
+    today = datetime.now()
+    if today.weekday() == 0:  # Monday
+        return today - timedelta(days=3)
+    else:
+        return today - timedelta(days=1)
 
-current_month = get_current_month()
-print(f"Filtering data for the month: {current_month}")
+previous_working_day = get_previous_working_day()
+print(f"Filtering data for the month: {previous_working_day}")
 
 if not os.path.exists(output_folder_path):
     os.makedirs(output_folder_path)
@@ -49,7 +52,7 @@ else:
                     df['Actual Date of upload'] = df['Actual Date of upload'].dt.strftime("%Y-%m-%d")
                     
                     # Keep only rows where necessary columns are not null
-                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == current_month)]
+                    df = df[df[["Formula", "Resource name", "Date", "Month"]].notnull().all(axis=1) & (df["Month"] == previous_working_day)]
                     
                     if not df.empty:
                         dfs.append(df)
