@@ -17,10 +17,11 @@ def previous_working_day(today=None):
 # Define prev_work_day as a global variable
 prev_work_day = previous_working_day()
 
+# Function to filter data for the previous working day
 def filtered_data_for_previous_working_day(df):
-    """Filter data for the previous working day and 'Equity' Asset Class."""
     prev_work_day = previous_working_day()
-    return df[(df['Date'] == prev_work_day) & (df['Region'] == 'EQ')]
+    df['Date'] = pd.to_datetime(df['Date']).dt.date  # Ensure the Date column is just dates
+    return df[(df['Date'] == prev_work_day) & (df['Asset Class'] == 'FDW') & (df['Category'].isin(['Notifications', 'Process Activity', 'Proactive Checks']))]
 
 
 def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
@@ -78,7 +79,7 @@ def process_and_send_email_with_tables():
     df = pd.read_excel("/path/to/your/excel_file.xlsx")
 
     # Convert 'Date' column to datetime format
-    df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y').dt.date
+    df['Date'] = pd.to_datetime(df['Date']).dt.normalize()
 
     # Filter data for previous working day and 'APAC' region
     filtered_data = filtered_data_for_previous_working_day(df)
