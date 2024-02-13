@@ -132,63 +132,93 @@ def process_and_send_email():
             'Exceptions': 'sum',
         }).reset_index()
         aggregated_by_app_and_asset_class['Total Count'] = aggregated_by_app_and_asset_class[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+        columns_to_sum = ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', '2 eye Count']
+        aggregated_by_app_and_asset_class_with_total = add_total_row(aggregated_by_app_and_asset_class, columns_to_sum)
+
+        # Calculate the 'Count by asset class' table
+        aggregated_by_asset_class = filtered_data.groupby(['Date', 'Application', 'Asset Class/Reports']).agg({
+            'Setup': 'sum',
+            'Amend': 'sum',
+            'Review': 'sum',
+            'Closure': 'sum',
+            'Deletion': 'sum',
+            'Exceptions': 'sum',
+        }).reset_index()
+        aggregated_by_asset_class['Total Count'] = aggregated_by_app_and_asset_class[['Setup', 'Amend', 'Review', 'Closure', 'Deletion', 'Exceptions']].sum(axis=1)
+        columns_to_sum = ['Setup', 'Amend', 'Closure', 'Deletion', 'Exceptions', '2 eye Count']
+        aggregated_by_asset_class_with_total = add_total_row(aggregated_by_asset_class, columns_to_sum)
+
+        # Calculate the 'Count by Internal Errors' table
+        aggregated_internal_errors = filtered_data.groupby(['Date']).agg({
+            'Error Count': 'sum'
+        }).reset_index()
+        aggregated_internal_errors.rename(columns={'Error Count': 'Internal Errors'}, inplace=True)
+
+        # Calculate the 'Email Count' table
+        aggregated_email_count = filtered_data.groupby(['Date']).agg({
+            'PDF Name': 'count',
+        }).reset_index()
+        aggregated_email_count.rename(columns={'PDF Name': 'Email Count'}, inplace=True)
 
         # Convert columns to integers for all tables 
-        all_dfs = [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application, aggregated_by_app_and_asset_class]
+        all_dfs = [aggregated_2_eye_data, aggregated_4_eye_data, aggregated_by_application, aggregated_by_app_and_asset_class, aggregated_by_asset_class, aggregated_internal_errors, aggregated_email_count]
         for df in all_dfs:
-            for col in df.columns[2:]:
-                if df[col].dtype == 'float64':  # Ensure only numeric columns undergo the conversion
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):  # Ensure only numeric columns undergo the conversion
                     df[col] = df[col].fillna(0).astype(int)
 
         # Generate HTML tables for both
         table_2_eye_html = aggregated_2_eye_data_with_total.to_html(index=False)
-        table_4_eye_html = aggregated_4_eye_data_with_total.to_html(index=False)
-        table_by_application_html = aggregated_by_application.to_html(index=False)
-        table_by_app_and_asset_class_html = aggregated_by_app_and_asset_class.to_html(index=False)
-
+        table_4_eye_html = aggregated_4_eye_data_with_total.to_html(index=False) if not aggregated_4_eye_data.empty else ""
+        table_by_application_html = aggregated_by_application_with_total.to_html(index=False) if not aggregated_by_application.empty else ""
+        table_by_app_and_asset_class_html = aggregated_by_app_and_asset_class_with_total.to_html(index=False) if not aggregated_by_app_and_asset_class.empty else "<p>No data available for 'Count by application and asset class'</p>"
+        table_by_asset_class_html = aggregated_by_asset_class_with_total.to_html(index=False) if not aggregated_by_asset_class.empty else "<p>No data available for 'Count by asset class'</p>"
+        table_internal_errors_html = aggregated_internal_errors.to_html(index=False) if not aggregated_internal_errors.empty else "<p>No data available for 'Internal Errors'</p>"
+        table_email_html = aggregated_email_count.to_html(index=False) if not aggregated_email_count.empty else ""
+        
         body = f"""
         <html>
             <head>
-        <style>
-            body {{
-                font-family: Arial, sans-serif;
-                font-size: 12px; /* Adjust the font size of the body, affecting overall readability */
-            }}
-            table {{
-                border-collapse: collapse;
-                width: 100%;
-                font-size: 10px; /* Smaller font size for the table */
-            }}
-            th, td {{
-                border: 1px solid #dddddd;
-                text-align: left;
-                padding: 4px; /* Reduced padding inside cells */
-            }}
-            th {{
-                background-color: #f2f2f2;
-            }}
-            tr:nth-child(even) {{
-                background-color: #f9f9f9;
-            }}
-            tr.total {{
-                font-weight: bold;
-                background-color: #e2e2e2;
-            }}
-        </style>
-    </head>
-            <body>
-                <p style="text-align:center;">Hi,</p>
-                <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
-                {table_2_eye_html}
-                <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
-                {table_4_eye_html}
-                <p style="text-align:center;">Here's the "Count by application" table for {prev_work_day}:</p>
-                {table_by_application_html}
-                <p style="text-align:center;">Here's the "Count by application and asset class" table for {prev_work_day}:</p>
-                {table_by_app_and_asset_class_html}
-                <p style="text-align:center;">Regards,</p>
-                <p style="text-align:center;">Your Name</p>
-            </body>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        font-size: 12px; /* Adjust the font size of the body, affecting overall readability */
+                    }}
+                    table {{
+                        border-collapse: collapse;
+                        width: 100%;
+                        font-size: 10px; /* Smaller font size for the table */
+                    }}
+                    th, td {{
+                        border: 1px solid #dddddd;
+                        text-align: left;
+                        padding: 4px; /* Reduced padding inside cells */
+                    }}
+                    th {{
+                        background-color: #f2f2f2;
+                    }}
+                    tr:nth-child(even) {{
+                        background-color: #f9f9f9;
+                    }}
+                    tr.total {{
+                        font-weight: bold;
+                        background-color: #e2e2e2;
+                    }}
+                </style>
+            </head>
+                <body>
+                    <p>Hi Team,</p>
+                    <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
+                    {table_2_eye_html}
+                    <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
+                    {table_4_eye_html}
+                    <p style="text-align:center;">Here's the "Count by application" table for {prev_work_day}:</p>
+                    {table_by_application_html}
+                    <p style="text-align:center;">Here's the "Count by application and asset class" table for {prev_work_day}:</p>
+                    {table_by_app_and_asset_class_html}
+                    <p style="text-align:center;">Regards,</p>
+                    <p style="text-align:center;">Your Name</p>
+                </body>
         </html>
         """
 
