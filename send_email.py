@@ -6,22 +6,11 @@ from email import encoders
 import pandas as pd
 from datetime import datetime, timedelta
 
-def data_exists_for_date(date, df):
-    if df is None or df.empty:
-        return False
-    return not df[df['Date'] == date].empty
-
 def previous_working_day(today=None, df=None):
+    """Compute the previous working day"""
     if today is None:
         today = datetime.now().date()
 
-    if today.weekday() == 0:  # If today is Monday
-        saturday = today - timedelta(days=2)
-        if data_exists_for_date(saturday, df):
-            return saturday
-        else:
-            return saturday - timedelta(days=1)
-    else:
         offset = 1 if today.weekday() != 0 else 3
         return today - timedelta(days=offset)
 
@@ -29,14 +18,9 @@ def previous_working_day(today=None, df=None):
 prev_work_day = previous_working_day()
 
 def filtered_data_for_previous_working_day(df):
-    if df is None:
-        return None
-    prev_work_day = previous_working_day(df=df)
-    if prev_work_day is None:
-        return None
-    filtered_df = df[df['Date'] == prev_work_day]
-    return filtered_df[filtered_df['Region'] == 'APAC'] if not filtered_df.empty else None
-
+    """Filter data for the previous working day and 'APAC' region."""
+    prev_work_day = previous_working_day()
+    return df[(df['Date'] == prev_work_day) & (df['Region' == 'APAC'])]
 
 def send_email_with_table(subject, df, body, to_email, attachment_path):
     from_email = "your_email@gmail.com"
