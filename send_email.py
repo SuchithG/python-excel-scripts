@@ -208,7 +208,9 @@ def process_and_send_email():
             </head>
                 <body>
                     <p>Hi Team,</p>
-                    <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
+                    <p class="section-heading">Below are the APAC Manual Setup/Amend/Review/Closure/Deletion/Exception tables for {prev_work_day}</p>
+                    <p>Also attached is the excel file of current month data for your reference</p>
+                    <p><b>2 eye count</b> for {prev_work_day}</p>
                     {table_2_eye_html}
                     <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
                     {table_4_eye_html}
