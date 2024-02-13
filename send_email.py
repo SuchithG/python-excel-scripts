@@ -6,13 +6,13 @@ from email import encoders
 import pandas as pd
 from datetime import datetime, timedelta
 
-def previous_working_day(today=None, df=None):
+def previous_working_day(today=None):
     """Compute the previous working day"""
     if today is None:
         today = datetime.now().date()
 
-        offset = 1 if today.weekday() != 0 else 3
-        return today - timedelta(days=offset)
+    offset = 1 if today.weekday() != 0 else 3
+    return today - timedelta(days=offset)
 
 # Define prev_work_day as a global variable
 prev_work_day = previous_working_day()
@@ -22,37 +22,34 @@ def filtered_data_for_previous_working_day(df):
     prev_work_day = previous_working_day()
     return df[(df['Date'] == prev_work_day) & (df['Region' == 'APAC'])]
 
-def send_email_with_table(subject, df, body, to_email, attachment_path):
-    from_email = "your_email@gmail.com"
-    password = "your_password"  # Consider using an app-specific password if using Gmail
+def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
+    # Set up the email server and login 
+    server = smtplib.SMTP('localhost',34)
+    server.starttls()
+    server.login('your_email@gmail.com', 'your_password')
+    from_email = 'your_email@gmail.com'
 
-    # Convert DataFrame to HTML table
-    table_html = df.to_html(index=False)
+    # Create the email message
     msg = MIMEMultipart()
-    msg["From"] = from_email
-    msg["To"] = to_email
+    msg["From"] = "your_email@gmail.com"
+    msg["To"] = ', '.join(recipients)
+    msg["Cc"] = ', '.join(cc_recipients)
     msg["Subject"] = subject
 
-
-
-    msg.attach(MIMEText(body, 'plain'))
-
-    with open(attachment_path, "rb") as attachment:
+    # Attach the body and the excel file to email
+    msg.attach(MIMEText(body, 'html'))
+    with open(file_path, "rb") as attachment:
         part = MIMEBase("application", "octet-stream")
         part.set_payload(attachment.read())
         encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename= {attachment_path}")
+        part.add_header("Content-Disposition", f"attachment; filename= {file_path.split('/')[-1]}")
         msg.attach(part)
 
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(from_email, password)
-        server.sendmail(from_email, to_email, msg.as_string())
-        server.quit()
-        print("Email sent successfully!")
-    except Exception as e:
-        print(f"Error occurred: {e}")
+    # Send the email
+    all_recipients = recipients + cc_recipients
+    server.sendmail(from_email, all_recipients, msg.as_string())
+    server.quit()
+    return f"Email sent to {', '.join(all_recipients)}!"
 
 def process_and_send_email():
     try:
