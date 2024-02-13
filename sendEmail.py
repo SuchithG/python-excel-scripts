@@ -92,14 +92,32 @@ html = f"""
 <html>
   <head>
     <style>
-      table, th, td {{
-        border: 1px solid black;
-        border-collapse: collapse;
-        text-align: center; /* Center-align text */
-        padding: 5px; /* Optional: to add some padding inside cells */
-      }}
+        body {{
+            font-family: Arial, sans-serif;
+            font-size: 12px; /* Adjust the font size of the body, affecting overall readability */
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 10px; /* Smaller font size for the table */
+        }}
+        th, td {{
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 4px; /* Reduced padding inside cells */
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        tr.total {{
+            font-weight: bold;
+            background-color: #e2e2e2;
+        }}
     </style>
-  </head>
+</head>
   <body>
     <p>Hi,<br>
        Please find below the required tables:<br>
