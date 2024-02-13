@@ -143,19 +143,33 @@ def process_and_send_email():
     body = f"""
     <html>
         <head>
-        <style>
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-            }}
-            table, th, td {{
-                border: 1px solid black;
-                text-align: center;
-                vertical-align: middle;
-                white-space: normal;
-            }}
-        </style>
-    </head>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            font-size: 12px; /* Adjust the font size of the body, affecting overall readability */
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 10px; /* Smaller font size for the table */
+        }}
+        th, td {{
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 4px; /* Reduced padding inside cells */
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        tr.total {{
+            font-weight: bold;
+            background-color: #e2e2e2;
+        }}
+    </style>
+</head>
         <body>
             <p style="text-align:center;">Hi,</p>
             <p style="text-align:center;">Here's the "2 eye count" table for {previous_working_day}:</p>
