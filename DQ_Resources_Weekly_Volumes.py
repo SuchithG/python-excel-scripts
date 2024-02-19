@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import time
 from datetime import datetime
+import openpyxl
 
 start_time = time.time()
 
@@ -73,19 +74,40 @@ for folder_path in folder_paths:
 # After concatenating all data frames
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
-
-    # Replace NaN values with 0 and remove columns starting with 'Unnamed:'
-    result_df = result_df.loc[:, ~result_df.columns.str.contains('^Unnamed')]
+    
+    # Set the date to the 24th of each month for the 'Month' column
+    result_df['Month'] = result_df['Month'].apply(lambda x: datetime(x.year, x.month, 24))
 
     # Transpose specified columns
-    result_df = result_df.melt(id_vars=["Formula", "Resource name", "Date", "Month"],
+    result_df = result_df.melt(id_vars=["Formula", "Resource name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number"],
                                value_vars=["Count", "Setup", "Amend", "Review", "Closure", "4 eye Count"],
-                               var_name='Activity Type',
+                               var_name='Name',
                                value_name='Value')
+
+    # Add the 'Source' column with all values set to "Orchestra"
+    result_df['Source'] = "Orchestra"
+
+    # Add the 'InAccuracy' column with all values set to "Accurate"
+    result_df['InAccuracy'] = "Accurate"
+
+    # Ensure the columns are in the specified order
+    result_df = result_df[["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number", "Source", "Name", "Value", "InAccuracy"]]
 
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "Resources_Daily_Volumes_Data.xlsx")
     result_df.to_excel(output_file_path, index=False)
+
+    # Apply custom formatting for the 'Month' column using openpyxl
+    wb = openpyxl.load_workbook(output_file_path)
+    ws = wb.active
+
+    # Assuming 'Month' is in the 4th column (D)
+    for cell in ws['D']:
+        if isinstance(cell.value, datetime):
+            cell.number_format = 'dd-mmm'
+
+    wb.save(output_file_path)
+
     print(f"Data concatenated successfully. Output file saved at: {output_folder_path}")
 else:
     print("No valid data found. Concatenation skipped.")
