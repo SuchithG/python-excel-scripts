@@ -77,19 +77,18 @@ for folder_path in folder_paths:
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
 
-    # Convert 'Date' and 'Actual Date' columns to datetime format
+    # Correctly handle 'Date' and 'Actual Date' as dates formatted as mm/dd/yyyy
     result_df['Date'] = pd.to_datetime(result_df['Date'], errors='coerce').dt.strftime('%m/%d/%Y')
     result_df['Actual Date'] = pd.to_datetime(result_df['Actual Date'], errors='coerce').dt.strftime('%m/%d/%Y')
 
-    # First, ensure the 'Month' column is in datetime format to manipulate the date
+    # Prepare 'Month' column as datetime for formatting in Excel (keep as datetime object for now)
     result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y', errors='coerce')
-    # Then, set the day to the 24th before converting to string format
-    result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24)).dt.strftime('%m/%d/%Y')
+    result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24))
 
     # Convert 'Resource Name' to uppercase
     result_df['Resource Name'] = result_df['Resource Name'].str.upper()
 
-    # Transpose specified columns
+    # Melt operation
     result_df = result_df.melt(id_vars=["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number"],
                                value_vars=["Count", "Setup", "Amend", "Review", "Closure", "4 eye Count"],
                                var_name='Name',
@@ -102,17 +101,20 @@ if dfs:
     # Ensure the columns are in the specified order
     result_df = result_df[["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number", "Source", "Name", "Value", "InAccuracy"]]
 
-    # Save the concatenated data frame to a new Excel file
+    # Save the DataFrame to an Excel file
     output_file_path = os.path.join(output_folder_path, "Resources_Daily_Volumes_Data.xlsx")
     result_df.to_excel(output_file_path, index=False)
 
-    # Now, use openpyxl to apply custom formatting for the 'Month' column in Excel
+    # Now, use openpyxl to apply custom formatting for the 'Month' column
     wb = load_workbook(output_file_path)
     ws = wb.active
 
-    # Assuming 'Month' is in the 4th column (D), adjust if your DataFrame structure is different
-    for cell in ws['D'][1:]:  # Skip the header row
-        cell.number_format = 'dd-mmm'
+    # Define a custom date style for 'Month'
+    date_style = NamedStyle(name='date_style', number_format='dd-mmm')
+    wb.add_named_style(date_style)
+
+    for cell in ws['D'][1:]:  # Assuming 'Month' is column D; adjust if your DataFrame structure is different
+        cell.style = date_style
 
     wb.save(output_file_path)
 
