@@ -109,7 +109,7 @@ if dfs:
     wb = openpyxl.load_workbook(output_file_path)
     ws = wb.active
 
-    # Apply the custom date format for the 'Month' column, assumed to be column D
+    # Apply the custom date format for the 'Date' column, assumed to be column D
     for cell in ws['C'][1:]:  # Skip the header row
         cell.number_format = 'm/d/yyyy'
 
