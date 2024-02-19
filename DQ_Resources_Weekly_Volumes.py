@@ -75,6 +75,10 @@ for folder_path in folder_paths:
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
     
+    # Convert 'Date' column to datetime format if it's not already
+    result_df['Date'] = pd.to_datetime(result_df['Date'])
+    result_df['Actual Date'] = pd.to_datetime(result_df['Actual Date'])
+
     # Ensure the 'Month' column is in datetime format before setting the day
     result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y')
     result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24))
@@ -105,11 +109,19 @@ if dfs:
     wb = openpyxl.load_workbook(output_file_path)
     ws = wb.active
 
-    # Assuming 'Month' is in the 4th column (D)
+    # Apply the custom date format for the 'Month' column, assumed to be column D
+    for cell in ws['C'][1:]:  # Skip the header row
+        cell.number_format = 'm/d/yyyy'
+
+    # Apply the custom date format for the 'Month' column, assumed to be column D
     for cell in ws['D'][1:]:  # Skip the header row
         if cell.value:  # Check if cell is not empty
             cell.value = datetime.strptime(cell.value, '%m/%d/%Y')  # Convert back to datetime
             cell.number_format = 'dd-mmm'
+
+    # Apply the custom date format for the 'Actual Date' column, assumed to be column Q
+    for cell in ws['Q'][1:]:  # Skip the header row
+        cell.number_format = 'm/d/yyyy'
 
     wb.save(output_file_path)
 
