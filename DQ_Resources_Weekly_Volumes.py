@@ -75,12 +75,13 @@ for folder_path in folder_paths:
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
 
-    # Ensure 'Date' and 'Actual Date' columns are in datetime format, then format them without time.
+    # Convert 'Date' and 'Actual Date' columns to datetime format
     result_df['Date'] = pd.to_datetime(result_df['Date'], errors='coerce').dt.strftime('%m/%d/%Y')
     result_df['Actual Date'] = pd.to_datetime(result_df['Actual Date'], errors='coerce').dt.strftime('%m/%d/%Y')
 
-    # Ensure the 'Month' column is in datetime format before setting the day to 24th, then convert to string without time.
+    # First, ensure the 'Month' column is in datetime format to manipulate the date
     result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y', errors='coerce')
+    # Then, set the day to the 24th before converting to string format
     result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24)).dt.strftime('%m/%d/%Y')
 
     # Convert 'Resource Name' to uppercase
@@ -96,15 +97,12 @@ if dfs:
     result_df['Source'] = "Orchestra"
     result_df['InAccuracy'] = "Accurate"
 
-    # Reorder columns as specified
+    # Ensure the columns are in the specified order
     result_df = result_df[["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number", "Source", "Name", "Value", "InAccuracy"]]
 
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "Resources_Daily_Volumes_Data.xlsx")
     result_df.to_excel(output_file_path, index=False)
-
-    # No need to apply custom formatting for 'Date' and 'Actual Date' as they are already in the desired format.
-    # Openpyxl section for custom formatting is removed as the desired formats are already set directly via pandas.
 
     print(f"Data concatenated successfully. Output file saved at: {output_folder_path}")
 else:
