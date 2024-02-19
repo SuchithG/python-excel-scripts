@@ -1,3 +1,5 @@
+from openpyxl import load_workbook
+from openpyxl.styles import NamedStyle
 import os
 import pandas as pd
 import time
@@ -103,6 +105,16 @@ if dfs:
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "Resources_Daily_Volumes_Data.xlsx")
     result_df.to_excel(output_file_path, index=False)
+
+    # Now, use openpyxl to apply custom formatting for the 'Month' column in Excel
+    wb = load_workbook(output_file_path)
+    ws = wb.active
+
+    # Assuming 'Month' is in the 4th column (D), adjust if your DataFrame structure is different
+    for cell in ws['D'][1:]:  # Skip the header row
+        cell.number_format = 'dd-mmm'
+
+    wb.save(output_file_path)
 
     print(f"Data concatenated successfully. Output file saved at: {output_folder_path}")
 else:
