@@ -74,14 +74,15 @@ for folder_path in folder_paths:
 # After concatenating all data frames
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
-    
-    # Convert 'Date' column to datetime format if it's not already
-    result_df['Date'] = pd.to_datetime(result_df['Date'])
-    result_df['Actual Date'] = pd.to_datetime(result_df['Actual Date'])
 
-    # Ensure the 'Month' column is in datetime format before setting the day
-    result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y')
-    result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24))
+    # Convert 'Date', 'Month', and 'Actual Date' columns to datetime format
+    # then format them without the time component.
+    result_df['Date'] = pd.to_datetime(result_df['Date'], errors='coerce').dt.strftime('%m/%d/%Y')
+    result_df['Actual Date'] = pd.to_datetime(result_df['Actual Date'], errors='coerce').dt.strftime('%m/%d/%Y')
+    result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y', errors='coerce').dt.strftime('%m/%d/%Y')
+
+    # Convert 'Resource Name' to uppercase
+    result_df['Resource Name'] = result_df['Resource Name'].str.upper()
 
     # Transpose specified columns
     result_df = result_df.melt(id_vars=["Formula", "Resource name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number"],
@@ -95,9 +96,6 @@ if dfs:
     # Add the 'InAccuracy' column with all values set to "Accurate"
     result_df['InAccuracy'] = "Accurate"
 
-    # Temporarily change 'Month' to string to prevent to_excel from changing the format
-    result_df['Month'] = result_df['Month'].dt.strftime('%m/%d/%Y')
-
     # Ensure the columns are in the specified order
     result_df = result_df[["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number", "Source", "Name", "Value", "InAccuracy"]]
 
@@ -109,19 +107,21 @@ if dfs:
     wb = openpyxl.load_workbook(output_file_path)
     ws = wb.active
 
-    # Apply the custom date format for the 'Date' column, assumed to be column D
-    for cell in ws['C'][1:]:  # Skip the header row
-        cell.number_format = 'm/d/yyyy'
+    # Define a custom date style
+    date_style = openpyxl.styles.NamedStyle(name='custom_date_style', number_format='M/D/YYYY')
+
+    # Apply the custom date style to the 'Date' and 'Actual Date' columns
+    date_col = ws['C']  # Assuming 'Date' is in column C
+    actual_date_col = ws['Q']  # Assuming 'Actual Date' is in column Q
+    for col in [date_col, actual_date_col]:
+        for cell in col[1:]:  # Skip the header row
+            cell.style = date_style
 
     # Apply the custom date format for the 'Month' column, assumed to be column D
     for cell in ws['D'][1:]:  # Skip the header row
         if cell.value:  # Check if cell is not empty
             cell.value = datetime.strptime(cell.value, '%m/%d/%Y')  # Convert back to datetime
             cell.number_format = 'dd-mmm'
-
-    # Apply the custom date format for the 'Actual Date' column, assumed to be column Q
-    for cell in ws['Q'][1:]:  # Skip the header row
-        cell.number_format = 'm/d/yyyy'
 
     wb.save(output_file_path)
 
