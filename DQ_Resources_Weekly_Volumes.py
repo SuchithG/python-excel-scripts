@@ -75,8 +75,9 @@ for folder_path in folder_paths:
 if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
     
-    # Set the date to the 24th of each month for the 'Month' column
-    result_df['Month'] = result_df['Month'].apply(lambda x: datetime(x.year, x.month, 24))
+    # Ensure the 'Month' column is in datetime format before setting the day
+    result_df['Month'] = pd.to_datetime(result_df['Month'], format='%b-%y')
+    result_df['Month'] = result_df['Month'].apply(lambda x: x.replace(day=24))
 
     # Transpose specified columns
     result_df = result_df.melt(id_vars=["Formula", "Resource name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number"],
@@ -90,6 +91,9 @@ if dfs:
     # Add the 'InAccuracy' column with all values set to "Accurate"
     result_df['InAccuracy'] = "Accurate"
 
+    # Temporarily change 'Month' to string to prevent to_excel from changing the format
+    result_df['Month'] = result_df['Month'].dt.strftime('%m/%d/%Y')
+
     # Ensure the columns are in the specified order
     result_df = result_df[["Formula", "Resource Name", "Date", "Month", "Category", "Work Drivers", "Activity", "Asset Class", "Case #", "Error Count", "Actual Date", "ID number", "Source", "Name", "Value", "InAccuracy"]]
 
@@ -102,8 +106,9 @@ if dfs:
     ws = wb.active
 
     # Assuming 'Month' is in the 4th column (D)
-    for cell in ws['D']:
-        if isinstance(cell.value, datetime):
+    for cell in ws['D'][1:]:  # Skip the header row
+        if cell.value:  # Check if cell is not empty
+            cell.value = datetime.strptime(cell.value, '%m/%d/%Y')  # Convert back to datetime
             cell.number_format = 'dd-mmm'
 
     wb.save(output_file_path)
