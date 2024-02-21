@@ -3,7 +3,7 @@ Global AllDataValid As Boolean
 Sub ValidateData()
     Dim ws As Worksheet
     Set ws = ActiveSheet
-    Dim lastRow As Long, i As Long, j As Long, colIndex As Long
+    Dim lastRow As Long, i As Long, j As Long
     Dim isValidRow As Boolean, hasNumericEntry As Boolean, errorRows As String
     
     AllDataValid = True
@@ -16,38 +16,31 @@ Sub ValidateData()
         isValidRow = True
         hasNumericEntry = False
         
-        ' PDF Name validation and numeric entry check, assuming "PDF Name" is in column E (5)
-        If ws.Cells(i, 5).Value = "" Or IsNumeric(ws.Cells(i, 5).Value) Then
+        ' PDF Name validation (Column E = 5)
+        If ws.Cells(i, 6).Value = "" Or IsNumeric(ws.Cells(i, 6).Value) Then
             isValidRow = False
         Else
-            ' Check for numeric entry > 0 in specified columns
-            Dim checkColumns As Variant
-            checkColumns = Array(10, 11, 12, 13, 14) ' Columns for Setup, Amend, Review, Closure, Exceptions
-            
-            For j = LBound(checkColumns) To UBound(checkColumns)
-                colIndex = checkColumns(j)
-                If IsNumeric(ws.Cells(i, colIndex).Value) And ws.Cells(i, colIndex).Value > 0 Then
+            ' Check for numeric entry > 0 in specified columns (Setup = 11, Amend = 12, Review = 13, Closure = 14, Exceptions = 15)
+            For Each j In Array(11, 12, 13, 14, 15)
+                If IsNumeric(ws.Cells(i, j).Value) And ws.Cells(i, j).Value > 0 Then
                     hasNumericEntry = True
                     Exit For
                 End If
             Next j
             
-            ' If no valid numeric entry found or Activity column is filled
-            If Not hasNumericEntry Or ws.Cells(i, 16).Value <> "" Then
+            ' If no valid numeric entry found or Activity column (Column J = 10) is filled
+            If Not hasNumericEntry Or ws.Cells(i, 9).Value <> "" Then ' Corrected based on column order
                 isValidRow = False
             End If
         End If
         
-        ' Mandatory fields check
-        mandatoryColumns = Array(2, 3, 4, 5, 6, 7) ' Replace with actual column indexes for mandatory fields
-        
-        For j = LBound(mandatoryColumns) To UBound(mandatoryColumns)
-            colIndex = mandatoryColumns(j)
-            If IsEmpty(ws.Cells(i, colIndex).Value) Then
+        ' Mandatory fields check (Resource Name = 2, Date = 3, Month = 4, Region = 5, 2 eye = 16, 4 eye = 17, Actual Date of upload = 18)
+        For Each j In Array(2, 3, 4, 5, 16, 17, 18)
+            If IsEmpty(ws.Cells(i, j).Value) Then
                 isValidRow = False
                 Exit For
             End If
-        Next j
+        Next
         
         ' Apply color coding based on validation
         If isValidRow Then
