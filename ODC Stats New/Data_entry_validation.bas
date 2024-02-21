@@ -3,52 +3,57 @@ Global AllDataValid As Boolean
 Sub ValidateData()
     Dim ws As Worksheet
     Set ws = ActiveSheet
-    Dim lastRow As Long, i As Long, j As Long
-    Dim isValidRow As Boolean, hasNumericEntry As Boolean, errorRows As String
+    Dim lastRow As Long, i As Long, colIndex As Long
+    Dim isValidRow As Boolean
+    Dim errorRows As String
+    Dim numericEntryRequiredColumns As Variant
+    numericEntryRequiredColumns = Array(11, 12, 13, 14, 15) ' Setup, Amend, Review, Closure, Exceptions
     
     AllDataValid = True
-    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     errorRows = ""
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     
     Application.ScreenUpdating = False
     
-    For i = 2 To lastRow ' Assuming data starts at row 2
-        isValidRow = True
-        hasNumericEntry = False
+    For i = 2 To lastRow
+        isValidRow = True ' Assume the row is valid initially
         
-        ' PDF Name validation (Column E = 5)
+        ' Check PDF Name is not blank and not purely numeric
         If ws.Cells(i, 6).Value = "" Or IsNumeric(ws.Cells(i, 6).Value) Then
             isValidRow = False
-        Else
-            ' Check for numeric entry > 0 in specified columns (Setup = 11, Amend = 12, Review = 13, Closure = 14, Exceptions = 15)
-            For Each j In Array(11, 12, 13, 14, 15)
-                If IsNumeric(ws.Cells(i, j).Value) And ws.Cells(i, j).Value > 0 Then
-                    hasNumericEntry = True
-                    Exit For
-                End If
-            Next j
-            
-            ' If no valid numeric entry found or Activity column (Column J = 10) is filled
-            If Not hasNumericEntry Or ws.Cells(i, 9).Value <> "" Then ' Corrected based on column order
-                isValidRow = False
-            End If
         End If
         
-        ' Mandatory fields check (Resource Name = 2, Date = 3, Month = 4, Region = 5, 2 eye = 16, 4 eye = 17, Actual Date of upload = 18)
-        For Each j In Array(2, 3, 4, 5, 16, 17, 18)
-            If IsEmpty(ws.Cells(i, j).Value) Then
+        ' Check if at least one of the specific columns has a numeric entry greater than 0
+        Dim hasPositiveNumeric As Boolean
+        hasPositiveNumeric = False
+        For Each colIndex In numericEntryRequiredColumns
+            If ws.Cells(i, colIndex).Value > 0 Then
+                hasPositiveNumeric = True
+                Exit For
+            End If
+        Next
+        
+        If Not hasPositiveNumeric Then isValidRow = False ' No positive numeric entries found
+        
+        ' If there is an entry in "PDF name", there cannot be an entry in "Activity" column
+        If ws.Cells(i, 9).Value <> "" Then isValidRow = False ' Activity has an entry
+        
+        ' Mandatory fields: Resource Name, Date, Month, Region, 2 eye, 4 eye must be filled
+        For Each colIndex In Array(2, 3, 4, 5, 16, 17) ' Checking mandatory fields
+            If IsEmpty(ws.Cells(i, colIndex).Value) Then
                 isValidRow = False
                 Exit For
             End If
         Next
         
-        ' Apply color coding based on validation
+        ' Coloring rows based on validation
         If isValidRow Then
             ws.Rows(i).Interior.Color = RGB(144, 238, 144) ' Light green for valid rows
         Else
             ws.Rows(i).Interior.Color = RGB(255, 99, 71) ' Light red for invalid rows
             AllDataValid = False
-            errorRows = errorRows & i & ", "
+            If Len(errorRows) > 0 Then errorRows = errorRows & ", "
+            errorRows = errorRows & i
         End If
     Next i
     
@@ -57,6 +62,6 @@ Sub ValidateData()
     If AllDataValid Then
         MsgBox "All data is valid. Ready to upload.", vbInformation
     Else
-        MsgBox "Some rows have errors: " & Left(errorRows, Len(errorRows) - 2), vbCritical
+        MsgBox "Validation failed on rows: " & errorRows, vbCritical
     End If
 End Sub
