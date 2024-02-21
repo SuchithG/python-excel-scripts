@@ -3,11 +3,8 @@ Global AllDataValid As Boolean
 Sub ValidateData()
     Dim ws As Worksheet
     Set ws = ActiveSheet
-    Dim lastRow As Long
-    Dim i As Long, colIndex As Long
-    Dim isValidRow As Boolean
-    Dim hasNumericEntry As Boolean
-    Dim errorRows As String
+    Dim lastRow As Long, i As Long, j As Long, colIndex As Long
+    Dim isValidRow As Boolean, hasNumericEntry As Boolean, errorRows As String
     
     AllDataValid = True
     lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
@@ -19,8 +16,8 @@ Sub ValidateData()
         isValidRow = True
         hasNumericEntry = False
         
-        ' Rule 1 & 2: PDF Name validation and numeric entry check
-        If ws.Cells(i, 5).Value = "" Or IsNumeric(ws.Cells(i, 5).Value) Then ' Assuming "PDF Name" is in column E
+        ' PDF Name validation and numeric entry check, assuming "PDF Name" is in column E (5)
+        If ws.Cells(i, 5).Value = "" Or IsNumeric(ws.Cells(i, 5).Value) Then
             isValidRow = False
         Else
             ' Check for numeric entry > 0 in specified columns
@@ -36,21 +33,21 @@ Sub ValidateData()
             Next j
             
             ' If no valid numeric entry found or Activity column is filled
-            If Not hasNumericEntry Or ws.Cells(i, 16).Value <> "" Then ' Assuming "Activity" is in column P
+            If Not hasNumericEntry Or ws.Cells(i, 16).Value <> "" Then
                 isValidRow = False
             End If
         End If
         
-        ' Rule 3: Mandatory fields check
-        Dim mandatoryColumns As Variant
-        mandatoryColumns = Array(2, "DateColumnIndex", "MonthColumnIndex", "RegionColumnIndex", "2EyeColumnIndex", "4EyeColumnIndex") ' Replace with actual column indexes
+        ' Mandatory fields check
+        mandatoryColumns = Array(2, 3, 4, 5, 6, 7) ' Replace with actual column indexes for mandatory fields
         
-        For Each colIndex In mandatoryColumns
+        For j = LBound(mandatoryColumns) To UBound(mandatoryColumns)
+            colIndex = mandatoryColumns(j)
             If IsEmpty(ws.Cells(i, colIndex).Value) Then
                 isValidRow = False
                 Exit For
             End If
-        Next colIndex
+        Next j
         
         ' Apply color coding based on validation
         If isValidRow Then
