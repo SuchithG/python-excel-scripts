@@ -33,6 +33,15 @@ if not os.path.exists(output_folder_path):
 # List to store data frames
 dfs = []
 
+# Data types specification for consistent column data types across all files
+data_types = {
+    'Formula': str,
+    'Resource name': str,
+    # Specify other columns and their desired data types, especially those expected to be numeric
+    'Count': int, 'Setup': int, 'Amend': int, 'Review': int, 'Closure': int, '4 eye Count': int, 'Error Count': int
+    # Uncomment and adjust above line as per your actual data columns and types
+}
+
 # Check if folder path exists
 if not os.path.exists(folder_path):
     print(f"Folder path '{folder_path}' does not exist. Skipping...")
@@ -50,10 +59,21 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path)
+                df = pd.read_excel(file_path, dtype=data_types)
                 
+                # Ensure 'Date' column is datetime for proper comparison
+                df['Date'] = pd.to_datetime(df['Date'])
+
                 # Keep only rows where 'Date' matches the previous working day
                 df = df[df['Date'].dt.date == previous_working_day_str]
+
+                # Ensure all required numeric columns are present and correctly formatted
+                numeric_columns = ['Count', 'Setup', 'Amend', 'Review', 'Closure', '4 eye Count', 'Error Count']  # Adjust as needed
+                for col in numeric_columns:
+                    if col not in df.columns:
+                        df[col] = 0  # Add missing numeric columns with default value of 0
+                    else:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)  # Ensure numeric and clean
 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
@@ -72,7 +92,7 @@ if dfs:
     result_df = pd.concat(dfs, ignore_index=True)
 
     # Remove columns that start with "Unnamed:"
-    result_df = result_df.loc[:, ~result_df.columns.str.startswith('Unnamed:')]
+    result_df = result_df.loc[:, ~result_df.columns.str.startswith('Unnamed:')] # Remove columns that start with "Unnamed:"
 
     # Save the concatenated data frame to a new Excel file
     output_file_path = os.path.join(output_folder_path, "concatenated_data.xlsx")
