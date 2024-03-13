@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 # Function to get the current month in the required format
 def get_current_month():
-    return datetime.now.strftime('%B-%Y')
+    return datetime.now().strftime('%B-%Y')
 
 current_month = get_current_month()
 
