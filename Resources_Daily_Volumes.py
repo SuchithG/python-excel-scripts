@@ -59,7 +59,7 @@ else:
             
             # Try reading the file with header
             try:
-                df = pd.read_excel(file_path, dtype=data_types)
+                df = pd.read_excel(file_path)
                 
                 # Ensure 'Date' column is datetime for proper comparison
                 df['Date'] = pd.to_datetime(df['Date'])
@@ -71,9 +71,9 @@ else:
                 numeric_columns = ['Count', 'Setup', 'Amend', 'Review', 'Closure', '4 eye Count', 'Error Count']  # Adjust as needed
                 for col in numeric_columns:
                     if col not in df.columns:
-                        df[col] = 0  # Add missing numeric columns with default value of 0
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)  # Ensure numeric and clean0
                     else:
-                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)  # Ensure numeric and clean
+                        df[col] = 0
 
                 # Check if necessary columns are in the file
                 if set(["Formula", "Resource name", "Date", "Month"]).issubset(df.columns):
