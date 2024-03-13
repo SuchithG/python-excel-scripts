@@ -99,13 +99,12 @@ def process_and_send_email_with_tables():
     filtered_data_notifications = filtered_data[filtered_data['Category'] == 'Notifications']
 
     # Calculate the '2 eye count' table for the filtered data
-    aggregated_by_notifications = filtered_data_notifications.groupby(['Date', 'Work Drivers', 'Category', 'Activity', 'Asset Class']).agg({
+    aggregated_by_notifications = filtered_data_notifications.groupby(['Date', 'Resource Name', 'Work Drivers', 'Category', 'Asset Class']).agg({
         'Count': 'sum',
         'Setup': 'sum',
         'Amend': 'sum',
         'Review': 'sum',
         'Closure': 'sum',
-        'Deletion': 'sum',
         '4 eye Count': 'sum',
         'Error Count': 'sum',
     }).reset_index()
@@ -117,8 +116,8 @@ def process_and_send_email_with_tables():
     # Filter for 'Process Activity' in the 'Category' column
     filtered_data_process_activity = filtered_data[filtered_data['Category'] == 'Process Activity']
 
-    # Calculate the '2 eye count' table for the filtered data
-    aggregated_by_process_activity = filtered_data_process_activity.groupby(['Date', 'Work Drivers', 'Category', 'Activity', 'Asset Class']).agg({
+    # Calculate the 'Count by Process Activity'
+    aggregated_by_process_activity = filtered_data_process_activity.groupby(['Date','Resource Name', 'Work Drivers', 'Category', 'Asset Class']).agg({
         'Count': 'sum',
         'Setup': 'sum',
         'Amend': 'sum',
@@ -136,14 +135,13 @@ def process_and_send_email_with_tables():
     # Filter for 'Proactive Checks' in the 'Category' column
     filtered_data_proactive_checks = filtered_data[filtered_data['Category'] == 'Proactive Checks']
 
-    # Calculate the '2 eye count' table for the filtered data
-    aggregated_by_proactive_checks = filtered_data_proactive_checks.groupby(['Date', 'Work Drivers', 'Category', 'Activity', 'Asset Class']).agg({
+    # Calculate the 'Count by Proactive Checks' table
+    aggregated_by_proactive_checks = filtered_data_proactive_checks.groupby(['Date', 'Resource Name', 'Work Drivers', 'Category', 'Asset Class']).agg({
         'Count': 'sum',
         'Setup': 'sum',
         'Amend': 'sum',
         'Review': 'sum',
         'Closure': 'sum',
-        'Deletion': 'sum',
         '4 eye Count': 'sum',
         'Error Count': 'sum',
     }).reset_index()
@@ -152,23 +150,8 @@ def process_and_send_email_with_tables():
     columns_to_sum = ['Exception Count','Setup','Amend','Review','Closure','Deletion','4 eye Count','Error Count']
     aggregated_by_proactive_checks_with_total = add_total_row(aggregated_by_proactive_checks, columns_to_sum)
 
-    # Calculate the 'Count by Resource Name' table
-    aggregated_by_resource_name = filtered_data.groupby(['Date', 'Resource Name', 'Asset Class']).agg({
-        'Count': 'sum',
-        'Setup': 'sum',
-        'Amend': 'sum',
-        'Review': 'sum',
-        'Closure': 'sum',
-        '4 eye Count': 'sum',
-        'Error Count': 'sum',
-    }).reset_index()
-    aggregated_by_resource_name.rename(columns={'Count':'Exception Count'}, inplace=True)
-    aggregated_by_resource_name['Total Count'] = aggregated_by_resource_name[['Setup','Amend','Review','Closure']].sum(axis=1)
-    columns_to_sum = ['Exception Count','Setup','Amend','Review','Closure','Deletion','4 eye Count','Error Count']
-    aggregated_by_resource_name_with_total = add_total_row(aggregated_by_resource_name, columns_to_sum)
-
     # Convert columns to integers for all tables 
-    all_dfs = [aggregated_by_notifications,aggregated_by_process_activity, aggregated_by_proactive_checks, aggregated_by_resource_name]
+    all_dfs = [aggregated_by_notifications,aggregated_by_process_activity, aggregated_by_proactive_checks]
     for df in all_dfs:
         for col in df.columns[2:]:
             if pd.api.types.is_numeric_dtype(df[col]):
@@ -181,45 +164,55 @@ def process_and_send_email_with_tables():
     table_by_notifications_html = df_to_html_with_integers(aggregated_by_notifications_with_total) if not aggregated_by_notifications.empty else "<p>No data available for previous working day</p>"
     table_by_process_activity_html = df_to_html_with_integers(aggregated_by_process_activity_with_total) if not aggregated_by_process_activity.empty else "<p>No data available for previous working day</p>"
     table_by_proactive_checks_html = df_to_html_with_integers(aggregated_by_proactive_checks_with_total) if not aggregated_by_proactive_checks.empty else "<p>No data available for previous working day</p>"
-    table_by_resource_name_html = df_to_html_with_integers(aggregated_by_resource_name_with_total) if not aggregated_by_resource_name.empty else "<p>No data available for previous working day</p>"
 
     body = f"""
     <html>
         <head>
-        <style>
-            table {{
-                width: 100%;
-                border-collapse: collapse;
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    font-size: 14px; /* Adjust the font size as needed */
             }}
-            table, th, td {{
-                border: 1px solid black;
-                text-align: center;
-                vertical-align: middle;
-                white-space: normal;
+            table {{
+                border-collapse: collapse;
+                font-size: 12px; /* Reduced font size for the table */
+            }}
+            th, td {{
+                border: 1px solid #dddddd; /* Light grey border for readability */
+                text-align: left; /* Align text to the left */
+                padding: 4px; /* Padding for cell content */
+            }}
+            th {{
+                background-color: #f2f2f2; /* Grey background for table headers */
+                color: black;
+            }}
+            tr:nth-child(even) {{
+                background-color: #f9f9f9; /* Light grey background for even rows */
+            }}
+            .total-row {{
+                font-weight: bold; /* Make total row bold*/
+                background-color: #e2e2e2; /* Slightly darker background for total row */
             }}
         </style>
-    </head>
+        </head>
         <body>
             <p>Hi Team,</p>
-            <p><b>EQ Orchestra Count By <span style="color: Blue;">Process Activity:</span> TCS+DBOI </b> for {prev_work_day}:</p>
+            <p>Enclosed are the daily stats for previous working day by resource for all the Asset class.</p>
+            <p><b>Count By <span style="color: Blue;">Notifications:</span> - DIPL </b> for {prev_work_day}:</p>
             {table_by_notifications_html}
-            <p><b>EQ Orchestra Count By <span style="color: Blue;">Process Activity:</span> TCS+DBOI </b> for {prev_work_day}:</p>
+            <p><b>Count By <span style="color: Blue;">Process Activity:</span> - DIPL </b> for {prev_work_day}:</p>
             {table_by_process_activity_html}
-            <p><b>EQ Orchestra Count By <span style="color: Blue;">Proactive Checks Activity:</span> TCS+DBOI </b> for {prev_work_day}:</p>
+            <p><b>Count By <span style="color: Blue;">Proactive Checks Activity:</span> - DIPL </b> for {prev_work_day}:</p>
             {table_by_proactive_checks_html}
-            <p><b>EQ Orchestra Count By <span style="color: Blue;">Resource Name:</span> TCS+DBOI </b> for {prev_work_day}:</p>
-            {table_by_resource_name_html}
-            <p>Thanks and Regards,</p>
-            <p>Suchith Girishkumar</p>
         </body>
     </html>
     """
 
     # Send the email with all tables
-    recepients = ["recipient1_email@example.com","recipient2_email@example.com"]
+    recipients = ["recipient1_email@example.com","recipient2_email@example.com"]
     cc_recipients = ["recipient1_email@example.com","recipient2_email@example.com"]
     subject = f"DB Resources Daily Volumes | {current_month}"
-    return send_email_with_table(subject, body, recepients, cc_recipients, r"/path/to/excel_workbook.xlsx")
+    return send_email_with_table(subject, body, recipients, cc_recipients, r"/path/to/excel_workbook.xlsx")
 
 # Execute the process and print the result
 result = process_and_send_email_with_tables()
