@@ -26,17 +26,17 @@ prev_work_day = previous_working_day()
 
 # Function to filter data for the previous working day
 def filtered_data_for_previous_working_day(df):
+    """Filter data for the previous working day"""
     prev_work_day = previous_working_day()
-    df['Date'] = pd.to_datetime(df['Date']).dt.date  # Ensure the Date column is just dates
-    return df[(df['Date'] == prev_work_day) & (df['Asset Class'] == 'FDW') & (df['Category'].isin(['Notifications', 'Process Activity', 'Proactive Checks']))]
+    return df[(df['Date'] == prev_work_day)]
 
 
 def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
     # Set up the email server and login
-    server = smtplib.SMTP('', )
+    server = smtplib.SMTP('', 36)
     server.starttls()
     server.login("your_email@gmail.com", 'password')
-    from_email = "your_password"  # Consider using an app-specific password if using Gmail
+    from_email = "your_password" 
 
     # Create the email message
     msg = MIMEMultipart()
@@ -47,7 +47,7 @@ def send_email_with_table(subject, body, recipients, cc_recipients, file_path):
 
 
     # Attach the body and the excel file to email
-    msg.attach(MIMEText(body, 'plain'))
+    msg.attach(MIMEText(body, 'html'))
     with open(file_path, "rb") as attachment:
         part = MIMEBase("application", "octet-stream")
         part.set_payload(attachment.read())
