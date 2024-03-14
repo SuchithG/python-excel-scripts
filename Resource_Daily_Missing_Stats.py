@@ -29,27 +29,34 @@ def get_required_dates():
             required_dates.append(current_date)
     return required_dates
 
-# Function to check for data presence on any of the required dates
-def check_consecutive_dates(file_path):
+# Function to get the current month as a string in "MMM-YY" format
+def get_current_month_string():
+    return datetime.now().strftime('%b-%y')
+
+# Function to check for data presence on any of the required dates for the current month
+def check_consecutive_dates(file_path, current_month):
     try:
         df = pd.read_excel(file_path)
-        df_eq = df[df['Asset Class'] == 'EQ'].copy()  # Make a copy to avoid SettingWithCopyWarning
-        df_eq['Date'] = pd.to_datetime(df_eq['Date'], format='%Y-%m-%d')
+        # Filter for the current month and 'EQ' Asset Class
+        df_filtered = df[(df['Month'] == current_month) & (df['Asset Class'] == 'EQ')].copy()
+        df_filtered['Date'] = pd.to_datetime(df_filtered['Date'], format='%d-%b-%y')
         required_dates = get_required_dates()
-        data_exists = any(df_eq['Date'].dt.date == date.date() for date in required_dates)
+        # Check if any required date is present in the data
+        data_exists = any((df_filtered['Date'].dt.date == date.date()).any() for date in required_dates)
         return not data_exists
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
-        return True  # If there's an error, include the file in the list
+        return True
 
 # List to store names of files without data on any of the required dates
 missing_data_files = []
 
 # Check each Excel workbook in the folder
+current_month = get_current_month_string()
 for file_name in os.listdir(folder_path):
     if file_name.endswith('.xlsx'):
         file_path = os.path.join(folder_path, file_name)
-        if check_consecutive_dates(file_path):
+        if check_consecutive_dates(file_path, current_month):
             missing_data_files.append(file_name)
 
 # Function to send email with the list of files
