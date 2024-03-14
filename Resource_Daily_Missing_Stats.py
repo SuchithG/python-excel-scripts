@@ -29,14 +29,16 @@ def get_required_dates():
             required_dates.append(current_date)
     return required_dates
 
-# Check for the presence of data for three consecutive days excluding Sundays
+# Function to check for the presence of data for three consecutive days excluding Sundays
 def check_consecutive_dates(file_path):
     try:
         df = pd.read_excel(file_path)
+        # Filter rows where Asset Class is 'EQ'
+        df_eq = df[df['Asset Class'] == 'EQ']
         # Explicitly specify the date format for parsing
-        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        df_eq['Date'] = pd.to_datetime(df_eq['Date'], format='%Y-%m-%d')
         required_dates = get_required_dates()
-        date_presence = [any(df['Date'].dt.date == date.date()) for date in required_dates]
+        date_presence = [any(df_eq['Date'].dt.date == date.date()) for date in required_dates]
         return not all(date_presence)  # Return True if NOT all required dates are present
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
@@ -54,12 +56,12 @@ for file_name in os.listdir(folder_path):
 
 # Function to send email
 def send_email(missing_files, to_recipients, cc_recipients):
-    body = "The following Excel files do not have data for three consecutive working days:\n\n" + "\n".join(missing_files)
+    body = "The following Excel files do not have data for three consecutive working days under the 'EQ' Asset Class:\n\n" + "\n".join(missing_files)
     msg = MIMEMultipart()
     msg['From'] = smtp_user
     msg['To'] = ', '.join(to_recipients)
     msg['CC'] = ', '.join(cc_recipients)  # Include CC recipients in the header
-    msg['Subject'] = 'Excel Files Missing Consecutive Working Days Data'
+    msg['Subject'] = 'Excel Files Missing Consecutive Working Days Data for EQ Asset Class'
     msg.attach(MIMEText(body, 'plain'))
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
@@ -78,4 +80,4 @@ def send_email(missing_files, to_recipients, cc_recipients):
 if missing_data_files:
     send_email(missing_data_files, to_recipients, cc_recipients)
 else:
-    print("All files have data for three consecutive working days.")
+    print("All files have data for three consecutive working days under the 'EQ' Asset Class.")
