@@ -29,7 +29,6 @@ def get_required_dates():
             required_dates.append(current_date)
     return required_dates
 
-# Function to check for the presence of data for three consecutive days excluding Sundays
 def check_consecutive_dates(file_path):
     try:
         df = pd.read_excel(file_path)
@@ -38,11 +37,12 @@ def check_consecutive_dates(file_path):
         # Explicitly specify the date format for parsing
         df_eq['Date'] = pd.to_datetime(df_eq['Date'], format='%Y-%m-%d')
         required_dates = get_required_dates()
-        date_presence = [any(df_eq['Date'].dt.date == date.date()) for date in required_dates]
-        return not all(date_presence)  # Return True if NOT all required dates are present
+        # Check if data exists for at least one of the required dates
+        data_exists = any(df_eq['Date'].dt.date == date.date() for date in required_dates)
+        return not data_exists  # Return True if data does NOT exist for all required dates
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
-        return True  # Consider files with errors as not meeting the criteria
+        return True  # Consider files with errors as needing attention
 
 # List to store names of files that do not have data for three consecutive working days
 missing_data_files = []
