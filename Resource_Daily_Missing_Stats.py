@@ -17,7 +17,7 @@ smtp_password = 'your_password'
 # Define email recipients
 to_recipients = ['recipient1@example.com', 'recipient2@example.com']
 cc_recipients = ['cc1@example.com', 'cc2@example.com']
-bcc_recipients = ['bcc@example.com']  # For demonstration, you can add BCC recipients if needed
+bcc_recipients = ['bcc@example.com']  # Optional, for demonstration
 
 # Function to get the three required dates excluding Sundays
 def get_required_dates():
@@ -25,49 +25,46 @@ def get_required_dates():
     current_date = datetime.now()
     while len(required_dates) < 3:
         current_date -= timedelta(days=1)
-        if current_date.weekday() != 6:  # 6 corresponds to Sunday
+        if current_date.weekday() != 6:  # Skip Sundays
             required_dates.append(current_date)
     return required_dates
 
+# Function to check for data presence on any of the required dates
 def check_consecutive_dates(file_path):
     try:
         df = pd.read_excel(file_path)
-        # Filter rows where Asset Class is 'EQ'
-        df_eq = df[df['Asset Class'] == 'EQ']
-        # Explicitly specify the date format for parsing
+        df_eq = df[df['Asset Class'] == 'EQ'].copy()  # Make a copy to avoid SettingWithCopyWarning
         df_eq['Date'] = pd.to_datetime(df_eq['Date'], format='%Y-%m-%d')
         required_dates = get_required_dates()
-        # Check if data exists for at least one of the required dates
         data_exists = any(df_eq['Date'].dt.date == date.date() for date in required_dates)
-        return not data_exists  # Return True if data does NOT exist for all required dates
+        return not data_exists
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
-        return True  # Consider files with errors as needing attention
+        return True  # If there's an error, include the file in the list
 
-# List to store names of files that do not have data for three consecutive working days
+# List to store names of files without data on any of the required dates
 missing_data_files = []
 
 # Check each Excel workbook in the folder
 for file_name in os.listdir(folder_path):
-    if file_name.endswith('.xlsx'):  # Ensure we're only looking at Excel files
+    if file_name.endswith('.xlsx'):
         file_path = os.path.join(folder_path, file_name)
         if check_consecutive_dates(file_path):
             missing_data_files.append(file_name)
 
-# Function to send email
+# Function to send email with the list of files
 def send_email(missing_files, to_recipients, cc_recipients):
-    body = "The following Excel files do not have data for three consecutive working days under the 'EQ' Asset Class:\n\n" + "\n".join(missing_files)
+    body = "The following Excel files have no data under 'EQ' Asset Class for any of the three consecutive working days:\n\n" + "\n".join(missing_files)
     msg = MIMEMultipart()
     msg['From'] = smtp_user
     msg['To'] = ', '.join(to_recipients)
-    msg['CC'] = ', '.join(cc_recipients)  # Include CC recipients in the header
-    msg['Subject'] = 'Excel Files Missing Consecutive Working Days Data for EQ Asset Class'
+    msg['CC'] = ', '.join(cc_recipients)
+    msg['Subject'] = 'Missing Data for Consecutive Working Days in Excel Files'
     msg.attach(MIMEText(body, 'plain'))
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(smtp_user, smtp_password)
-        # Combine TO, CC, and potentially BCC lists for the recipient parameter in sendmail
         all_recipients = to_recipients + cc_recipients + bcc_recipients
         text = msg.as_string()
         server.sendmail(smtp_user, all_recipients, text)
@@ -80,4 +77,4 @@ def send_email(missing_files, to_recipients, cc_recipients):
 if missing_data_files:
     send_email(missing_data_files, to_recipients, cc_recipients)
 else:
-    print("All files have data for three consecutive working days under the 'EQ' Asset Class.")
+    print("All files have data for at least one of the three consecutive working days under the 'EQ' Asset Class.")
