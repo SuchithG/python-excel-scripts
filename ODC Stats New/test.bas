@@ -3,8 +3,7 @@ Sub UploadDataToSummaryStats()
     Dim wsSuchith As Worksheet, wsCallsData As Worksheet
     Dim wsDestSuchith As Worksheet, wsDestCallsData As Worksheet
     Dim lastRowSourceSuchith As Long, lastRowSourceCallsData As Long
-    Dim row As Long, sumCheck As Double
-    Dim col As Integer, copyRangeSuchith As Range, copyRangeCallsData As Range
+    Dim copyRangeSuchith As Range, copyRangeCallsData As Range
     Dim sourceFilePath As String, destFilePath As String
     
     On Error GoTo ErrorHandler
@@ -21,34 +20,6 @@ Sub UploadDataToSummaryStats()
     ' Find last row with data in source worksheets
     lastRowSourceSuchith = wsSuchith.Cells(wsSuchith.Rows.Count, "A").End(xlUp).Row
     lastRowSourceCallsData = wsCallsData.Cells(wsCallsData.Rows.Count, "A").End(xlUp).Row
-    
-    ' Debug statements
-    Debug.Print "Last row in 'Suchith': " & lastRowSourceSuchith
-    Debug.Print "Last row in 'Calls Data': " & lastRowSourceCallsData
-    
-    ' Validate data in 'Suchith' sheet and check for data presence
-    If lastRowSourceSuchith > 1 Then
-        For row = 2 To lastRowSourceSuchith ' Assuming data starts from row 2
-            sumCheck = Application.WorksheetFunction.Sum(wsSuchith.Range("I" & row & ":N" & row))
-            If sumCheck < 1 Then
-                MsgBox "Sum of columns I to N in row " & row & " of 'Suchith' sheet must be greater than or equal to 1.", vbExclamation
-                GoTo CleanUp
-            End If
-            
-            For col = 1 To 8 ' Columns A to H
-                If IsEmpty(wsSuchith.Cells(row, col).Value) Then
-                    MsgBox "Column " & Chr(64 + col) & " in row " & row & " of 'Suchith' sheet cannot be blank.", vbExclamation
-                    GoTo CleanUp
-                End If
-            Next col
-            For col = 15 To 17 ' Columns O to Q
-                If IsEmpty(wsSuchith.Cells(row, col).Value) Then
-                    MsgBox "Column " & Chr(64 + col) & " in row " & row & " of 'Suchith' sheet cannot be blank.", vbExclamation
-                    GoTo CleanUp
-                End If
-            Next col
-        Next row
-    End If
     
     ' Open destination workbook
     Set wbDest = Workbooks.Open(destFilePath)
