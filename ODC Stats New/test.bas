@@ -22,6 +22,10 @@ Sub UploadDataToSummaryStats()
     lastRowSourceSuchith = wsSuchith.Cells(wsSuchith.Rows.Count, "A").End(xlUp).Row
     lastRowSourceCallsData = wsCallsData.Cells(wsCallsData.Rows.Count, "A").End(xlUp).Row
     
+    ' Debug statements
+    Debug.Print "Last row in 'Suchith': " & lastRowSourceSuchith
+    Debug.Print "Last row in 'Calls Data': " & lastRowSourceCallsData
+    
     ' Validate data in 'Suchith' sheet and check for data presence
     If lastRowSourceSuchith > 1 Then
         For row = 2 To lastRowSourceSuchith ' Assuming data starts from row 2
