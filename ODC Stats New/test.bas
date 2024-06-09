@@ -33,8 +33,7 @@ Sub UploadDataToSummaryStats()
     If lastRowSourceSuchith > 1 Then
         For row = 2 To lastRowSourceSuchith
             ' Check if all mandatory values are present and sum of values from "Count" column to "Exceptions" column is greater than 0
-            Set rowData = wsSuchith.Rows(row)
-            If Application.CountA(wsSuchith.Range("A" & row & ":P" & row)) = 16 Then ' Assuming there are 16 columns from A to P
+            If Application.CountA(wsSuchith.Range("A" & row & ":H" & row)) = 8 And Application.CountA(wsSuchith.Range("O" & row & ":Q" & row)) = 3 Then
                 sumCheck = Application.WorksheetFunction.Sum(wsSuchith.Range("I" & row & ":N" & row))
                 If sumCheck > 0 Then
                     Set copyRangeSuchith = wsSuchith.Range("A" & row & ":Q" & row)
