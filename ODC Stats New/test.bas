@@ -6,6 +6,8 @@ Sub UploadDataToSummaryStats()
     Dim copyRangeSuchith As Range, copyRangeCallsData As Range
     Dim sourceFilePath As String, destFilePath As String
     Dim row As Long, sumCheck As Double
+    Dim rowData As Range
+    Dim response As VbMsgBoxResult
     
     On Error GoTo ErrorHandler
     
@@ -31,12 +33,25 @@ Sub UploadDataToSummaryStats()
     If lastRowSourceSuchith > 1 Then
         For row = 2 To lastRowSourceSuchith
             ' Check if all mandatory values are present and sum of values from "Count" column to "Exceptions" column is greater than 0
+            Set rowData = wsSuchith.Rows(row)
             If Application.CountA(wsSuchith.Range("A" & row & ":P" & row)) = 16 Then ' Assuming there are 16 columns from A to P
                 sumCheck = Application.WorksheetFunction.Sum(wsSuchith.Range("K" & row & ":O" & row))
                 If sumCheck > 0 Then
                     Set copyRangeSuchith = wsSuchith.Range("A" & row & ":Q" & row)
                     copyRangeSuchith.Copy wsDestSuchith.Cells(wsDestSuchith.Rows.Count, "A").End(xlUp).Offset(1)
                     ' Clear contents of copied range in source worksheet
+                    wsSuchith.Rows(row).ClearContents
+                Else
+                    response = MsgBox("Sum of values from 'Count' to 'Exceptions' in row " & row & " is not greater than 0. Do you want to discard this row?", vbYesNo + vbExclamation)
+                    If response = vbYes Then
+                        ' Skip copying and clear the row in the source sheet
+                        wsSuchith.Rows(row).ClearContents
+                    End If
+                End If
+            Else
+                response = MsgBox("Mandatory values are missing in row " & row & ". Do you want to discard this row?", vbYesNo + vbExclamation)
+                If response = vbYes Then
+                    ' Skip copying and clear the row in the source sheet
                     wsSuchith.Rows(row).ClearContents
                 End If
             End If
