@@ -1,6 +1,6 @@
 # Define the input and output file paths for the new uploaded file
-input_file_path = '/mnt/data/file-gnJHC1LM6bC1dtwK2ZbNLnoa'
-output_file_path = '/mnt/data/cleaned_data_v.txt'
+input_file_path = '/mnt/data/file-JdPouu3ztBaH9Ftsy9ugNTKB'
+output_file_path = '/mnt/data/cleaned_data_v12.txt'
 
 # Read the content of the input file
 with open(input_file_path, 'r', encoding='utf-8', errors='ignore') as file:
@@ -22,8 +22,8 @@ keywords_to_remove = [
     "No. OF SECURITIES UPDATED:"
 ]
 
-# Define headers
-header_line = "SEC NO, SHORT NAME, TK NO, EXCH, CURR, DATE, PRICE, REMARKS"
+# Define headers (in the format they appear in the file)
+header_line = "SEC NO SHORT NAME TK NO EXCH CURR DATE PRICE REMARKS"
 
 # Iterate over the lines to clean them
 for line in lines:
@@ -32,7 +32,7 @@ for line in lines:
         continue
     
     # Ensure headers are present only in the first row
-    if header_line in line:
+    if line.strip().startswith("SEC NO"):
         if header_found:
             continue
         header_found = True
@@ -44,4 +44,4 @@ with open(output_file_path, 'w', encoding='utf-8') as file:
     for line in cleaned_lines:
         file.write(line)
 
-print("Data cleaning complete. The cleaned data is saved in 'cleaned_data_v.txt'.")
+print("Data cleaning complete. The cleaned data is saved in 'cleaned_data_v12.txt'.")
