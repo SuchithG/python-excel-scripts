@@ -4,17 +4,14 @@ from datetime import datetime
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime import base
 
 # Get the current year and month
 current_year = datetime.now().year
 current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
-# Construct the input file path dynamically
-base_dir = r'G:\{}\FI Exception - {}\SOD and EOD Report'.format(current_year, current_year)
-input_file_name = '{} {} SOD and EOD Report Updated Version.xlsx'.format(current_month, current_year)
-input_file_path = os.path.join(base_dir, input_file_name)
+# Paths to uploaded files
+input_file_path = '/mnt/data/file-GmItXFbPyea59pxBLb73B5rZ'  # Assuming this is the relevant file
 
 # Read the Excel file
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
@@ -34,7 +31,9 @@ df_daily_report_processed = df_daily_report[[
 
 # Apply formatting: highlight rows with blank "Comments" in light yellow
 def highlight_blank_comments(row):
-    return ['background-color: yellow' if pd.isna(row['Comments']) else '' for _ in row]
+    if pd.isna(row['Comments']):
+        return ['background-color: yellow; font-weight: bold' for _ in row]
+    return ['' for _ in row]
 
 # Convert DataFrames to HTML with formatting
 leave_tracker_html = df_leave_tracker_processed.to_html(index=False)
@@ -42,6 +41,7 @@ leave_tracker_html = df_leave_tracker_processed.to_html(index=False)
 # Apply style to the daily report
 styled_daily_report = df_daily_report_processed.style.apply(highlight_blank_comments, axis=1)\
                                                      .set_properties(**{'color': 'red'}, subset=['Total Exceptions', 'Exceptions count EOD'])\
+                                                     .hide_index()\
                                                      .render()
 
 # Email details
