@@ -15,16 +15,22 @@ input_file_path = os.path.join(base_dir, input_file_name)
 excel_data = pd.ExcelFile(input_file_path)
 
 # Read data from each sheet
+df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
 df_sales = pd.read_excel(input_file_path, sheet_name='Sales Data')
 df_inventory = pd.read_excel(input_file_path, sheet_name='Inventory Data')
 df_employee = pd.read_excel(input_file_path, sheet_name='Employee Data')
+
+# Process the Leave Tracker data to include only "Name", "Shift", and "Attendance"
+df_leave_tracker_processed = df_leave_tracker[['Name', 'Shift', 'Attendance']]
 
 # Define the file path for the output EOD report
 output_file_path = os.path.join(base_dir, 'EOD Report.xlsx')
 
 # Create a new Excel writer object for the EOD report
 with pd.ExcelWriter(output_file_path) as writer:
-    # Write each DataFrame to a separate sheet
+    # Write the processed Leave Tracker data to a sheet
+    df_leave_tracker_processed.to_excel(writer, sheet_name='Leave Tracker', index=False)
+    # Write each of the other DataFrames to separate sheets
     df_sales.to_excel(writer, sheet_name='Sales Data', index=False)
     df_inventory.to_excel(writer, sheet_name='Inventory Data', index=False)
     df_employee.to_excel(writer, sheet_name='Employee Data', index=False)
