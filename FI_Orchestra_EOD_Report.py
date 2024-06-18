@@ -11,11 +11,17 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-GmItXFbPyea59pxBLb73B5rZ'  # Assuming this is the relevant file
+input_file_path = '/mnt/data/file-xYecI2clWIcfyYvLuh7C4BZf'  # Use the relevant file uploaded
 
 # Read the Excel file
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
-df_daily_report = pd.read_excel(input_file_path, sheet_name=current_day)
+df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  # Assuming this is the correct sheet name
+
+# Debug: Verify data read from Excel
+print("Leave Tracker Data:")
+print(df_leave_tracker.head())
+print("\nDaily Report Data:")
+print(df_daily_report.head())
 
 # Process the Leave Tracker data to include only "Name", "Shift", and "Attendance"
 df_leave_tracker_processed = df_leave_tracker[['Name', 'Shift', 'Attendance']]
@@ -29,20 +35,36 @@ df_daily_report_processed = df_daily_report[[
     'Dependency', 'Comments'
 ]]
 
-# Apply formatting: highlight rows with blank "Comments" in light yellow
-def highlight_blank_comments(row):
-    if pd.isna(row['Comments']):
-        return ['background-color: yellow; font-weight: bold' for _ in row]
-    return ['' for _ in row]
+# Convert Leave Tracker DataFrame to HTML without any formatting
+leave_tracker_html = df_leave_tracker_processed.to_html(index=False, border=1)
 
-# Convert DataFrames to HTML with formatting
-leave_tracker_html = df_leave_tracker_processed.to_html(index=False)
+# Function to highlight rows with blank "Comments" in yellow
+def highlight_rows(df):
+    rows = df.to_dict(orient='records')
+    html = "<table border='1' cellspacing='0' cellpadding='5' style='border-collapse: collapse; width: 100%;'>"
+    html += "<thead><tr style='background-color: #4CAF50; color: white;'>"
+    for col in df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+    for row in rows:
+        if pd.isna(row['Comments']):
+            html += "<tr style='background-color: yellow'>"
+        else:
+            html += "<tr>"
+        for col in df.columns:
+            html += f"<td>{row[col]}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    return html
 
-# Apply style to the daily report
-styled_daily_report = df_daily_report_processed.style.apply(highlight_blank_comments, axis=1)\
-                                                     .set_properties(**{'color': 'red'}, subset=['Total Exceptions', 'Exceptions count EOD'])\
-                                                     .hide_index()\
-                                                     .render()
+# Apply the function to the daily report
+styled_daily_report_html = highlight_rows(df_daily_report_processed)
+
+# Debug: Verify the generated HTML
+print("\nLeave Tracker HTML:")
+print(leave_tracker_html)
+print("\nStyled Daily Report HTML:")
+print(styled_daily_report_html)
 
 # Email details
 smtp_server = 'smtp.example.com'
@@ -61,7 +83,7 @@ email_content = f"""
     <h2>Leave Tracker</h2>
     {leave_tracker_html}
     <h2>Daily Report ({current_day})</h2>
-    {styled_daily_report}
+    {styled_daily_report_html}
 </body>
 </html>
 """
