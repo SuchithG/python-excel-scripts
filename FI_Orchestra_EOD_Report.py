@@ -11,7 +11,7 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-xYecI2clWIcfyYvLuh7C4BZf'  # Use the relevant file uploaded
+input_file_path = '/mnt/data/file-cqRszSIpLiCna4ApkrdwQRdR'  # Use the relevant file uploaded
 
 # Read the Excel file
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
@@ -35,10 +35,27 @@ df_daily_report_processed = df_daily_report[[
     'Dependency', 'Comments'
 ]]
 
-# Convert Leave Tracker DataFrame to HTML without any formatting
+# Replace NaN with blank
+df_daily_report_processed = df_daily_report_processed.fillna('')
+
+# Convert float to integer where possible
+def convert_floats_to_int(df):
+    for col in df.select_dtypes(include=['float']):
+        if df[col].apply(float.is_integer).all():
+            df[col] = df[col].astype(int)
+    return df
+
+df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
+
+# Convert Leave Tracker DataFrame to HTML with light green header background
 leave_tracker_html = df_leave_tracker_processed.to_html(index=False, border=1)
 
-# Function to highlight rows with blank "Comments" in yellow
+leave_tracker_html = leave_tracker_html.replace(
+    '<thead>',
+    '<thead style="background-color: lightgreen;">'
+)
+
+# Function to highlight rows with blank "Comments" in yellow and set red color for specific columns
 def highlight_rows(df):
     rows = df.to_dict(orient='records')
     html = "<table border='1' cellspacing='0' cellpadding='5' style='border-collapse: collapse; width: 100%;'>"
@@ -47,12 +64,15 @@ def highlight_rows(df):
         html += f"<th>{col}</th>"
     html += "</tr></thead><tbody>"
     for row in rows:
-        if pd.isna(row['Comments']):
+        if row['Comments'] == '':
             html += "<tr style='background-color: yellow'>"
         else:
             html += "<tr>"
         for col in df.columns:
-            html += f"<td>{row[col]}</td>"
+            if col in ['Total Exceptions', 'Exceptions count EOD']:
+                html += f"<td style='color: red'>{row[col]}</td>"
+            else:
+                html += f"<td>{row[col]}</td>"
         html += "</tr>"
     html += "</tbody></table>"
     return html
@@ -78,7 +98,29 @@ subject = 'EOD Report'
 # Create the email content
 email_content = f"""
 <html>
-<head></head>
+<head>
+<style>
+    table {{
+        border-collapse: collapse;
+        width: 100%;
+    }}
+    th, td {{
+        text-align: left;
+        padding: 8px;
+        border: 1px solid black;
+    }}
+    th {{
+        background-color: lightgreen;
+        color: black;
+    }}
+    .highlight {{
+        background-color: yellow;
+    }}
+    .red-text {{
+        color: red;
+    }}
+</style>
+</head>
 <body>
     <h2>Leave Tracker</h2>
     {leave_tracker_html}
