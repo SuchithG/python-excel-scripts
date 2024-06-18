@@ -41,8 +41,7 @@ df_daily_report_processed = df_daily_report_processed.fillna('')
 # Convert float to integer where possible
 def convert_floats_to_int(df):
     for col in df.select_dtypes(include=['float']):
-        if df[col].apply(float.is_integer).all():
-            df[col] = df[col].astype(int)
+        df[col] = df[col].apply(lambda x: int(x) if x.is_integer() else x)
     return df
 
 df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
