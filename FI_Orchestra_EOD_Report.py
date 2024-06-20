@@ -5,17 +5,26 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+# Function to log dataframes for debugging
+def log_dataframe(df, name):
+    print(f"\n{name} DataFrame:")
+    print(df.head())
+
 # Get the current year and month
 current_year = datetime.now().year
 current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  
+input_file_path = '/mnt/data/file-H3v1VwRRi36DE7ml4zb1wb8P'  
 
 # Read the Excel file for the first two tables
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
 df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  
+
+# Log dataframes
+log_dataframe(df_leave_tracker, "Leave Tracker")
+log_dataframe(df_daily_report, "Daily Report")
 
 # Read the Excel file for the third and fourth tables
 third_fourth_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
@@ -26,15 +35,9 @@ df_third_table = pd.read_excel(third_fourth_table_path, sheet_name='INC STATUS')
 # Fourth table
 df_fourth_table = pd.read_excel(third_fourth_table_path, sheet_name='VENDOR TICKETS')
 
-# Debug: Verify data read from Excel
-print("Leave Tracker Data:")
-print(df_leave_tracker.head())
-print("\nDaily Report Data:")
-print(df_daily_report.head())
-print("\nThird Table Data:")
-print(df_third_table.head())
-print("\nFourth Table Data:")
-print(df_fourth_table.head())
+# Log dataframes
+log_dataframe(df_third_table, "Third Table")
+log_dataframe(df_fourth_table, "Fourth Table")
 
 # Process the Leave Tracker data to include only "Name", "Shift", and "Attendance"
 df_leave_tracker_processed = df_leave_tracker[['Name', 'Shift', 'Attendance']]
@@ -48,16 +51,26 @@ df_daily_report_processed = df_daily_report[[
     'Dependency', 'Comments'
 ]]
 
-# Replace NaN with blank
+# Replace NaN with blank and explicitly convert float columns to int where necessary
 df_daily_report_processed = df_daily_report_processed.fillna('')
+float_columns = df_daily_report_processed.select_dtypes(include=['float64']).columns
 
-# Convert float to integer where possible
-def convert_floats_to_int(df):
-    for col in df.select_dtypes(include=['float']):
-        df[col] = df[col].apply(lambda x: int(x) if pd.notnull(x) and x.is_integer() else x)
-    return df
+# Log before conversion
+print("\nBefore conversion to integers:")
+print(df_daily_report_processed[float_columns].head())
 
-df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
+# Convert float columns to integers where appropriate
+for col in float_columns:
+    df_daily_report_processed[col] = df_daily_report_processed[col].apply(lambda x: int(x) if pd.notnull(x) and x.is_integer() else x)
+
+# Convert all numbers to string format
+for col in df_daily_report_processed.columns:
+    if df_daily_report_processed[col].dtype in ['float64', 'int64']:
+        df_daily_report_processed[col] = df_daily_report_processed[col].apply(lambda x: '{:.0f}'.format(x) if pd.notnull(x) else '')
+
+# Log after conversion
+print("\nAfter conversion to integers:")
+print(df_daily_report_processed[float_columns].head())
 
 # Filter the third table data
 today_str = datetime.now().strftime('%d-%B-%Y')
