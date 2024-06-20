@@ -11,7 +11,7 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-cqRszSIpLiCna4ApkrdwQRdR'  # Use the relevant file uploaded
+input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded
 
 # Read the Excel file
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
@@ -41,7 +41,7 @@ df_daily_report_processed = df_daily_report_processed.fillna('')
 # Convert float to integer where possible
 def convert_floats_to_int(df):
     for col in df.select_dtypes(include=['float']):
-        df[col] = df[col].apply(lambda x: int(x) if x.is_integer() else x)
+        df[col] = df[col].apply(lambda x: '{:.0f}'.format(x) if x.is_integer() else x)
     return df
 
 df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
@@ -54,7 +54,7 @@ leave_tracker_html = leave_tracker_html.replace(
     '<thead style="background-color: lightgreen;">'
 )
 
-# Function to highlight rows with blank "Comments" in yellow and set red color for specific columns
+# Function to highlight rows with blank "Comments" in yellow
 def highlight_rows(df):
     rows = df.to_dict(orient='records')
     html = "<table border='1' cellspacing='0' cellpadding='5' style='border-collapse: collapse; width: 100%;'>"
@@ -68,10 +68,7 @@ def highlight_rows(df):
         else:
             html += "<tr>"
         for col in df.columns:
-            if col in ['Total Exceptions', 'Exceptions count EOD']:
-                html += f"<td style='color: red'>{row[col]}</td>"
-            else:
-                html += f"<td>{row[col]}</td>"
+            html += f"<td>{row[col]}</td>"
         html += "</tr>"
     html += "</tbody></table>"
     return html
@@ -114,9 +111,6 @@ email_content = f"""
     }}
     .highlight {{
         background-color: yellow;
-    }}
-    .red-text {{
-        color: red;
     }}
 </style>
 </head>
