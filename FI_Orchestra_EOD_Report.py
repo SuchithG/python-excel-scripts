@@ -11,15 +11,20 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded for the first and second tables
+input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc' 
 
 # Read the Excel file for the first two tables
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
-df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  # Assuming this is the correct sheet name
+df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  
 
-# Read the Excel file for the third table
-third_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
-df_third_table = pd.read_excel(third_table_path, sheet_name='INC STATUS')
+# Read the Excel file for the third and fourth tables
+third_fourth_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
+
+# Third table
+df_third_table = pd.read_excel(third_fourth_table_path, sheet_name='INC STATUS')
+
+# Fourth table
+df_fourth_table = pd.read_excel(third_fourth_table_path, sheet_name='VENDOR TICKETS')
 
 # Debug: Verify data read from Excel
 print("Leave Tracker Data:")
@@ -28,6 +33,8 @@ print("\nDaily Report Data:")
 print(df_daily_report.head())
 print("\nThird Table Data:")
 print(df_third_table.head())
+print("\nFourth Table Data:")
+print(df_fourth_table.head())
 
 # Process the Leave Tracker data to include only "Name", "Shift", and "Attendance"
 df_leave_tracker_processed = df_leave_tracker[['Name', 'Shift', 'Attendance']]
@@ -66,6 +73,19 @@ df_third_table_processed = df_third_table_filtered[[
 # Replace NaN with blank
 df_third_table_processed = df_third_table_processed.fillna('')
 
+# Filter the fourth table data
+df_fourth_table_filtered = df_fourth_table[(df_fourth_table['Ticket Status'] == 'Open') & 
+                                           (df_fourth_table['Comments'].str.contains(today_str))]
+
+# Select the required columns for the fourth table
+df_fourth_table_processed = df_fourth_table_filtered[[
+    'Raised BY', 'Vendor', 'Vendor ticket No.', 'Created Date', 'Ticket Status', 
+    'Closed Date', 'Notification ID', 'BBG call dis', 'Comments', 'Updated Status'
+]]
+
+# Replace NaN with blank
+df_fourth_table_processed = df_fourth_table_processed.fillna('')
+
 # Convert Leave Tracker DataFrame to HTML with light green header background
 leave_tracker_html = df_leave_tracker_processed.to_html(index=False, border=1)
 leave_tracker_html = leave_tracker_html.replace('<thead>', '<thead style="background-color: lightgreen;">')
@@ -79,7 +99,7 @@ def highlight_rows(df):
         html += f"<th>{col}</th>"
     html += "</tr></thead><tbody>"
     for row in rows:
-        if row['Comments'] == '':
+        if row.get('Comments', '') == '':
             html += "<tr style='background-color: yellow'>"
         else:
             html += "<tr>"
@@ -96,6 +116,10 @@ styled_daily_report_html = highlight_rows(df_daily_report_processed)
 third_table_html = df_third_table_processed.to_html(index=False, border=1)
 third_table_html = third_table_html.replace('<thead>', '<thead style="background-color: lightblue;">')
 
+# Convert the fourth table DataFrame to HTML
+fourth_table_html = df_fourth_table_processed.to_html(index=False, border=1)
+fourth_table_html = fourth_table_html.replace('<thead>', '<thead style="background-color: lightyellow;">')
+
 # Debug: Verify the generated HTML
 print("\nLeave Tracker HTML:")
 print(leave_tracker_html)
@@ -103,6 +127,8 @@ print("\nStyled Daily Report HTML:")
 print(styled_daily_report_html)
 print("\nThird Table HTML:")
 print(third_table_html)
+print("\nFourth Table HTML:")
+print(fourth_table_html)
 
 # Email details
 smtp_server = 'smtp.example.com'
@@ -141,8 +167,10 @@ email_content = f"""
     {leave_tracker_html}
     <h2>Daily Report ({current_day})</h2>
     {styled_daily_report_html}
-    <h2>Third Table</h2>
+    <h2>Incident Status</h2>
     {third_table_html}
+    <h2>Vendor Tickets</h2>
+    {fourth_table_html}
 </body>
 </html>
 """
