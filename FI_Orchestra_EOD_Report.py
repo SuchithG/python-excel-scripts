@@ -11,11 +11,11 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc' 
+input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded for the first and second tables
 
 # Read the Excel file for the first two tables
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
-df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  
+df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  # Assuming this is the correct sheet name
 
 # Read the Excel file for the third and fourth tables
 third_fourth_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
@@ -54,7 +54,7 @@ df_daily_report_processed = df_daily_report_processed.fillna('')
 # Convert float to integer where possible
 def convert_floats_to_int(df):
     for col in df.select_dtypes(include=['float']):
-        df[col] = df[col].apply(lambda x: '{:.0f}'.format(x) if x.is_integer() else x)
+        df[col] = df[col].apply(lambda x: int(x) if pd.notnull(x) and x.is_integer() else x)
     return df
 
 df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
