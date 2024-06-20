@@ -11,11 +11,11 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded for the first and second tables
+input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  
 
 # Read the Excel file for the first two tables
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
-df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  # Assuming this is the correct sheet name
+df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  
 
 # Read the Excel file for the third and fourth tables
 third_fourth_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
