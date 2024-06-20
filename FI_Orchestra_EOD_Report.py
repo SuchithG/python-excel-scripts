@@ -11,17 +11,23 @@ current_month = datetime.now().strftime('%B %Y')
 current_day = datetime.now().strftime('%d %B')
 
 # Paths to uploaded files
-input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded
+input_file_path = '/mnt/data/file-SWqCZUZO8umQV5AtKKsMWDTc'  # Use the relevant file uploaded for the first and second tables
 
-# Read the Excel file
+# Read the Excel file for the first two tables
 df_leave_tracker = pd.read_excel(input_file_path, sheet_name='Leave Tracker')
 df_daily_report = pd.read_excel(input_file_path, sheet_name='18 June')  # Assuming this is the correct sheet name
+
+# Read the Excel file for the third table
+third_table_path = 'G:/Sreekanth/Jun 2024/19-Jun-2024/FI MAIN HUB REPORT 2024.xlsx'
+df_third_table = pd.read_excel(third_table_path, sheet_name='INC STATUS')
 
 # Debug: Verify data read from Excel
 print("Leave Tracker Data:")
 print(df_leave_tracker.head())
 print("\nDaily Report Data:")
 print(df_daily_report.head())
+print("\nThird Table Data:")
+print(df_third_table.head())
 
 # Process the Leave Tracker data to include only "Name", "Shift", and "Attendance"
 df_leave_tracker_processed = df_leave_tracker[['Name', 'Shift', 'Attendance']]
@@ -46,13 +52,23 @@ def convert_floats_to_int(df):
 
 df_daily_report_processed = convert_floats_to_int(df_daily_report_processed)
 
+# Filter the third table data
+today_str = datetime.now().strftime('%d-%B-%Y')
+df_third_table_filtered = df_third_table[(df_third_table['Ticket Status'] == 'Open') & 
+                                         (df_third_table['Latest update from L2/L3/Ops'].str.contains(today_str))]
+
+# Select the required columns for the third table
+df_third_table_processed = df_third_table_filtered[[
+    'Notification ID', 'Raised By', 'DBUnity Incident #', 'Incident Subject', 'Created Date', 
+    'Status', 'Assignee', 'Latest update from L2/L3/Ops', 'Pending with', 'Priority defined by Ops'
+]]
+
+# Replace NaN with blank
+df_third_table_processed = df_third_table_processed.fillna('')
+
 # Convert Leave Tracker DataFrame to HTML with light green header background
 leave_tracker_html = df_leave_tracker_processed.to_html(index=False, border=1)
-
-leave_tracker_html = leave_tracker_html.replace(
-    '<thead>',
-    '<thead style="background-color: lightgreen;">'
-)
+leave_tracker_html = leave_tracker_html.replace('<thead>', '<thead style="background-color: lightgreen;">')
 
 # Function to highlight rows with blank "Comments" in yellow
 def highlight_rows(df):
@@ -76,11 +92,17 @@ def highlight_rows(df):
 # Apply the function to the daily report
 styled_daily_report_html = highlight_rows(df_daily_report_processed)
 
+# Convert the third table DataFrame to HTML
+third_table_html = df_third_table_processed.to_html(index=False, border=1)
+third_table_html = third_table_html.replace('<thead>', '<thead style="background-color: lightblue;">')
+
 # Debug: Verify the generated HTML
 print("\nLeave Tracker HTML:")
 print(leave_tracker_html)
 print("\nStyled Daily Report HTML:")
 print(styled_daily_report_html)
+print("\nThird Table HTML:")
+print(third_table_html)
 
 # Email details
 smtp_server = 'smtp.example.com'
@@ -119,6 +141,8 @@ email_content = f"""
     {leave_tracker_html}
     <h2>Daily Report ({current_day})</h2>
     {styled_daily_report_html}
+    <h2>Third Table</h2>
+    {third_table_html}
 </body>
 </html>
 """
