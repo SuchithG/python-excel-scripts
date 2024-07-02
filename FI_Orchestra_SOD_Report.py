@@ -103,9 +103,11 @@ if is_weekday():
 
     # Filter out "Karthik" and analysts who are not on leave
     available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
+    unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')]['Name'].tolist()
 
     # Debug print statements
     print("Available analysts: ", available_analysts)
+    print("Unavailable analysts: ", unavailable_analysts)
 
     # Calculate Open Exceptions for the current month
     data['NOTFCN_CRTE_TMS'] = pd.to_datetime(data['NOTFCN_CRTE_TMS'])
@@ -140,21 +142,30 @@ if is_weekday():
 
     for group, notifications in groups.items():
         assigned_analyst = analyst_mapping.get(group, 'No Analyst Assigned')
-        if assigned_analyst == 'No Analyst Assigned' or assigned_analyst not in available_analysts:
-            print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning...")
+        if assigned_analyst in unavailable_analysts:
+            print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning for today...")
             available_copy = available_analysts.copy()
             random.shuffle(available_copy)  # Shuffle the list to ensure randomness
-            assigned_analyst = available_copy.pop()  # Assign randomly from available analysts
-            print(f"Group {group} reassigned to {assigned_analyst}")
-        for notification in notifications:
-            report_data.append({
-                'Notification': notification,
-                'Analyst': assigned_analyst,
-                'Open Exceptions(for current month)': open_exceptions,
-                'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
-                'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
-            })
-        print(f"Group {group} assigned to {assigned_analyst}")
+            temporary_analyst = available_copy.pop() if available_copy else 'No Analyst Available'
+            print(f"Group {group} reassigned to {temporary_analyst} for today")
+            for notification in notifications:
+                report_data.append({
+                    'Notification': notification,
+                    'Analyst': temporary_analyst,
+                    'Open Exceptions(for current month)': open_exceptions,
+                    'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
+                    'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
+                })
+        else:
+            for notification in notifications:
+                report_data.append({
+                    'Notification': notification,
+                    'Analyst': assigned_analyst,
+                    'Open Exceptions(for current month)': open_exceptions,
+                    'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
+                    'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
+                })
+            print(f"Group {group} assigned to {assigned_analyst}")
 
     report_df = pd.DataFrame(report_data)
 
