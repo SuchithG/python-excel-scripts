@@ -146,7 +146,10 @@ if is_weekday():
             print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning for today...")
             available_copy = available_analysts.copy()
             random.shuffle(available_copy)  # Shuffle the list to ensure randomness
-            temporary_analyst = available_copy.pop() if available_copy else 'No Analyst Available'
+            if available_copy:
+                temporary_analyst = available_copy.pop()  # Assign randomly from available analysts for today only
+            else:
+                temporary_analyst = 'No Analyst Available'
             print(f"Group {group} reassigned to {temporary_analyst} for today")
             for notification in notifications:
                 report_data.append({
