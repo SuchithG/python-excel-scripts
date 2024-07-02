@@ -126,6 +126,7 @@ if is_weekday():
         # Create new weekly assignments
         analyst_mapping = {}
         initial_analysts = available_analysts.copy()
+        random.shuffle(initial_analysts)  # Shuffle the list to ensure random distribution
         for i, group in enumerate(groups.keys()):
             analyst_mapping[group] = initial_analysts[i % len(initial_analysts)]
         # Add current week to the mapping for reference
@@ -140,7 +141,11 @@ if is_weekday():
     for group, notifications in groups.items():
         assigned_analyst = analyst_mapping.get(group, 'No Analyst Assigned')
         if assigned_analyst == 'No Analyst Assigned' or assigned_analyst not in available_analysts:
-            assigned_analyst = random.choice(available_analysts)
+            print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning...")
+            available_copy = available_analysts.copy()
+            random.shuffle(available_copy)  # Shuffle the list to ensure randomness
+            assigned_analyst = available_copy.pop()  # Assign randomly from available analysts
+            print(f"Group {group} reassigned to {assigned_analyst}")
         for notification in notifications:
             report_data.append({
                 'Notification': notification,
