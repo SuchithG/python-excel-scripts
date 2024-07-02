@@ -121,6 +121,7 @@ if is_weekday():
     current_week = get_week_number()
     if previous_assignments and previous_assignments.get('Week') == current_week:
         analyst_mapping = {k: v for k, v in previous_assignments.items() if k != 'Week'}
+        print("Using previous assignments for the week:", analyst_mapping)
     else:
         # Create new weekly assignments
         analyst_mapping = {}
@@ -131,6 +132,7 @@ if is_weekday():
         analyst_mapping['Week'] = current_week
         # Save current assignments
         save_current_assignments(analyst_mapping, assignments_path)
+        print("New assignments for the week:", analyst_mapping)
 
     # Assign analysts to notifications, ensuring that unavailable analysts are handled
     report_data = []
@@ -147,6 +149,7 @@ if is_weekday():
                 'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
                 'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
             })
+        print(f"Group {group} assigned to {assigned_analyst}")
 
     report_df = pd.DataFrame(report_data)
 
