@@ -1,11 +1,10 @@
 import pandas as pd
 import os
+from datetime import datetime, timedelta
+import random
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
-from openpyxl import load_workbook
-import random
-from datetime import datetime, timedelta
 
 # Function to get dynamic file paths
 def get_dynamic_paths(base_path):
@@ -15,10 +14,9 @@ def get_dynamic_paths(base_path):
     day = today.strftime('%d %B')
     previous_day = (today - timedelta(days=1)).strftime('%d-%b-%y')
     
-    csv_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, f'{day}.xlsx')
+    csv_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, f'{day}.csv')
     attendance_tracker_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, 'Attendence Tracker.xlsx')
-    assignments_path = os.path.join(base_path, f'FI Exception - {year}', 'weekly_assignments.csv')
-    
+    assignments_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, 'weekly_assignments.csv')
     return csv_path, attendance_tracker_path, assignments_path, year, previous_day
 
 # Function to send email
@@ -48,6 +46,28 @@ def send_email(subject, body, to_emails, attachment_path):
     
     print(f"Email sent to {', '.join(to_emails)}")
 
+# Function to load previous assignments
+def load_previous_assignments(assignments_path):
+    if os.path.exists(assignments_path):
+        previous_assignments = pd.read_csv(assignments_path)
+        previous_assignments.set_index('Group', inplace=True)
+        previous_week = previous_assignments.loc['Week', 'Analyst']
+        previous_assignments.drop('Week', inplace=True)
+        return previous_assignments, int(previous_week)
+    else:
+        return pd.DataFrame(columns=['Group', 'Analyst']).set_index('Group'), None
+
+# Function to save current assignments
+def save_current_assignments(analyst_mapping, assignments_path):
+    df = pd.DataFrame(list(analyst_mapping.items()), columns=['Group', 'Analyst'])
+    current_week = get_week_number()
+    df = df.append({'Group': 'Week', 'Analyst': current_week}, ignore_index=True)
+    df.to_csv(assignments_path, index=False)
+
+# Function to get current week number
+def get_week_number():
+    return datetime.today().isocalendar()[1]
+
 # Define groups
 groups = {
     'Group 1': [16, 587, 70010, 70092],
@@ -60,129 +80,85 @@ groups = {
     'Group 8': [8, 541, 70005, 70018, 70024],
 }
 
-# Function to load previous assignments
-def load_previous_assignments(assignments_path):
-    if os.path.exists(assignments_path):
-        return pd.read_csv(assignments_path).set_index('Group').to_dict()['Analyst']
-    else:
-        return {}
-
-# Function to save current assignments
-def save_current_assignments(analyst_mapping, assignments_path):
-    df = pd.DataFrame(list(analyst_mapping.items()), columns=['Group', 'Analyst'])
-    df.to_csv(assignments_path, index=False)
-
-# Function to get current week number
-def get_week_number():
-    return datetime.today().isocalendar()[1]
-
-# Function to check if it's a weekday (Monday to Friday)
-def is_weekday():
-    return datetime.today().weekday() < 5
-
 # Base path for the files
-base_path = r'/mnt/data/'
+base_path = r'G:\'
 
 csv_path, attendance_tracker_path, assignments_path, year, previous_day = get_dynamic_paths(base_path)
 
-# Check if today is a weekday
-if is_weekday():
-    # Load the data from the Excel file with specified engine
-    workbook = load_workbook(filename=csv_path, data_only=True)
-    sheet = workbook['28 June']
+# Load the CSV data
+csv_data = pd.read_csv(csv_path)
 
-    # Convert the worksheet to a DataFrame
-    data = pd.DataFrame(sheet.values)
+# Load the attendance tracker
+attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
 
-    # Assign the first row as column names
-    data.columns = data.iloc[0]
-    data = data[1:]
+# Filter out analysts who are not on leave
+available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
+unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
 
-    # Load the attendance tracker
-    attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
+print(f"Available analysts: {available_analysts}")
+print(f"Unavailable analysts: {unavailable_analysts}")
 
-    # Filter out "Karthik" and analysts who are not on leave
-    available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
-    unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')]['Name'].tolist()
+# Calculate Open Exceptions for the current month
+attendance_tracker['NOTFCN_CRTE_TMS'] = pd.to_datetime(attendance_tracker['NOTFCN_CRTE_TMS'])
+open_exceptions = attendance_tracker[pd.to_datetime(attendance_tracker['NOTFCN_CRTE_TMS']).dt.strftime('%d-%b-%y') == previous_day]['NOTFCN_ID'].nunique()
 
-    # Debug print statements
-    print("Available analysts: ", available_analysts)
-    print("Unavailable analysts: ", unavailable_analysts)
+print(f"Open exceptions for the current month: {open_exceptions}")
 
-    # Calculate Open Exceptions for the current month
-    data['NOTFCN_CRTE_TMS'] = pd.to_datetime(data['NOTFCN_CRTE_TMS'])
-    open_exceptions = data[data['NOTFCN_CRTE_TMS'].dt.strftime('%d-%b-%y') == previous_day]['NOTFCN_ID'].nunique()
+# Load previous assignments and get the current week number
+previous_assignments, previous_week = load_previous_assignments(assignments_path)
+current_week = get_week_number()
 
-    # Debug print statement
-    print("Open exceptions for the current month: ", open_exceptions)
+analyst_mapping = {}
 
-    # Load previous assignments if they exist
-    previous_assignments = load_previous_assignments(assignments_path)
-
-    # Check if it's a new week
-    current_week = get_week_number()
-    if previous_assignments and previous_assignments.get('Week') == current_week:
-        analyst_mapping = {k: v for k, v in previous_assignments.items() if k != 'Week'}
-        print("Using previous assignments for the week:", analyst_mapping)
-    else:
-        # Create new weekly assignments
-        analyst_mapping = {}
-        initial_analysts = available_analysts.copy()
-        random.shuffle(initial_analysts)  # Shuffle the list to ensure random distribution
-        for i, group in enumerate(groups.keys()):
-            analyst_mapping[group] = initial_analysts[i % len(initial_analysts)]
-        # Add current week to the mapping for reference
-        analyst_mapping['Week'] = current_week
-        # Save current assignments
-        save_current_assignments(analyst_mapping, assignments_path)
-        print("New assignments for the week:", analyst_mapping)
-
-    # Assign analysts to notifications, ensuring that unavailable analysts are handled
-    report_data = []
-
-    for group, notifications in groups.items():
-        assigned_analyst = analyst_mapping.get(group, 'No Analyst Assigned')
-        if assigned_analyst in unavailable_analysts:
-            print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning for today...")
-            available_copy = available_analysts.copy()
-            random.shuffle(available_copy)  # Shuffle the list to ensure randomness
-            if available_copy:
-                temporary_analyst = available_copy.pop()  # Assign randomly from available analysts for today only
-            else:
-                temporary_analyst = 'No Analyst Available'
-            print(f"Group {group} reassigned to {temporary_analyst} for today")
-            for notification in notifications:
-                report_data.append({
-                    'Notification': notification,
-                    'Analyst': temporary_analyst,
-                    'Open Exceptions(for current month)': open_exceptions,
-                    'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
-                    'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
-                })
-        else:
-            for notification in notifications:
-                report_data.append({
-                    'Notification': notification,
-                    'Analyst': assigned_analyst,
-                    'Open Exceptions(for current month)': open_exceptions,
-                    'Todays Open Exception': data['Todays Open Exception'].sum() if 'Todays Open Exception' in data.columns else 0,
-                    'Total Exceptions': data['Total Exceptions'].sum() if 'Total Exceptions' in data.columns else 0,
-                })
-            print(f"Group {group} assigned to {assigned_analyst}")
-
-    report_df = pd.DataFrame(report_data)
-
-    # Save the report to an Excel file
-    report_file = f'notification_report_{year}.xlsx'
-    report_df.to_excel(report_file, index=False)
-
-    print(f"Report has been generated and saved as {report_file}")
-
-    # Send the email with the report
-    subject = 'Daily Exception Report'
-    body = 'Please find attached the daily exception report.'
-    to_emails = ['suchith.girishkumar@db.com']
-
-    send_email(subject, body, to_emails, report_file)
+if previous_week is None or current_week != previous_week:
+    # Shuffle the initial list of available analysts to ensure random distribution
+    initial_analysts = available_analysts.copy()
+    random.shuffle(initial_analysts)
+    for i, group in enumerate(groups.keys()):
+        analyst_mapping[group] = initial_analysts[i % len(initial_analysts)]
 else:
-    print("Today is a weekend. The script will not run.")
+    analyst_mapping = previous_assignments.to_dict()['Analyst']
+
+print(f"New assignments for the week: {analyst_mapping}, Week: {current_week}")
+
+# Reassign groups for today if needed
+report_data = []
+
+for group, notifications in groups.items():
+    assigned_analyst = analyst_mapping[group]
+    if assigned_analyst not in available_analysts:
+        available_copy = available_analysts.copy()
+        random.shuffle(available_copy)
+        temporary_analyst = available_copy.pop()
+        analyst_mapping[group] = temporary_analyst
+        print(f"Assigned analyst {assigned_analyst} for group {group} is not available. Reassigning to {temporary_analyst} for today.")
+    else:
+        temporary_analyst = assigned_analyst
+    for notification in notifications:
+        report_data.append({
+            'Notification': notification,
+            'Analyst': temporary_analyst,
+            'Open Exceptions(for current month)': open_exceptions,
+            'Todays Open Exception': csv_data['Todays Open Exception'].sum(),
+            'Total Exceptions': csv_data['Total Exceptions'].sum(),
+        })
+
+report_df = pd.DataFrame(report_data)
+
+# Save the report to an Excel file
+report_file = f'notification_report_{year}.xlsx'
+report_df.to_excel(report_file, index=False)
+
+print(f"Report has been generated and saved as {report_file}")
+
+# Save current assignments
+save_current_assignments(analyst_mapping, assignments_path)
+
+print(f"Current assignments saved: {analyst_mapping}")
+
+# Send the email with the report
+subject = 'Daily Exception Report'
+body = 'Please find attached the daily exception report.'
+to_emails = ['recipient1@example.com', 'recipient2@example.com']
+
+send_email(subject, body, to_emails, report_file)
