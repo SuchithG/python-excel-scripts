@@ -4,7 +4,6 @@ import random
 from datetime import datetime, timedelta
 import smtplib
 from email.message import EmailMessage
-from email.utils import formataddr
 
 # Function to get dynamic file paths
 def get_dynamic_paths(base_path):
@@ -37,31 +36,6 @@ def save_current_assignments(analyst_mapping, assignments_path):
 def get_week_number():
     return datetime.today().isocalendar()[1]
 
-# Function to send email
-def send_email(subject, body, to_emails, attachment_path):
-    from_email = 'your-email@example.com'
-    from_name = 'Your Name'
-    smtp_server = 'smtp.your-email-provider.com'
-    smtp_port = 587
-    smtp_username = 'your-email@example.com'
-    smtp_password = 'your-email-password'
-
-    msg = EmailMessage()
-    msg['Subject'] = subject
-    msg['From'] = formataddr((from_name, from_email))
-    msg['To'] = ', '.join(to_emails)
-    msg.set_content(body)
-
-    with open(attachment_path, 'rb') as f:
-        file_data = f.read()
-        file_name = os.path.basename(attachment_path)
-        msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
-
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_username, smtp_password)
-        server.send_message(msg)
-
 # Define groups
 groups = {
     'Group 1': [16, 587, 70010, 700921],
@@ -88,6 +62,10 @@ attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
 available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
 unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')]['Name'].tolist()
 
+# Print available and unavailable analysts
+print(f"Available analysts: {available_analysts}")
+print(f"Unavailable analysts: {unavailable_analysts}")
+
 # Calculate Open Exceptions for the current month
 open_exceptions = csv_data[pd.to_datetime(csv_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == datetime.today().strftime('%b %Y')]['NOTFCN_ID'].nunique()
 
@@ -95,12 +73,14 @@ open_exceptions = csv_data[pd.to_datetime(csv_data['NOTFCN_CRTE_TMS']).dt.strfti
 previous_assignments, previous_week = load_previous_assignments(assignments_path)
 
 # Print debug information
-print(f"Previous Assignments: {previous_assignments}")
+print(f"Previous Assignments: \n{previous_assignments}")
 print(f"Previous Week: {previous_week}")
 
 # Assign groups to analysts
 analyst_mapping = {}
 current_week = get_week_number()
+print(f"Current Week: {current_week}")
+
 if previous_week == current_week:
     analyst_mapping = previous_assignments['Analyst'].to_dict()
 else:
@@ -142,6 +122,27 @@ report_df = pd.DataFrame(report_data)
 report_file = f"notification_report_{datetime.today().year}.xlsx"
 report_df.to_excel(report_file, index=False)
 print(f"Report has been generated and saved as {report_file}")
+
+# Define the send_email function
+def send_email(subject, body, to_emails, attachment_path):
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = 'your_email@example.com'
+    msg['To'] = ', '.join(to_emails)
+    msg.set_content(body)
+
+    # Attach the report file
+    with open(attachment_path, 'rb') as f:
+        file_data = f.read()
+        file_name = os.path.basename(attachment_path)
+        msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
+
+    # Send the email via SMTP
+    with smtplib.SMTP('smtp.your_email_provider.com', 587) as server:
+        server.starttls()
+        server.login('your_email@example.com', 'your_password')
+        server.send_message(msg)
+        print(f"Email sent to: {', '.join(to_emails)}")
 
 # Send the email with the report
 send_email(
