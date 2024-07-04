@@ -14,7 +14,7 @@ def get_dynamic_paths(base_path):
     day = today.strftime('%d %B')
     previous_day = (today - timedelta(days=1)).strftime('%d-%b-%y')
     
-    csv_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, f'{day}.csv')
+    csv_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, f'{day}.xlsx')
     attendance_tracker_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, 'Attendence Tracker.xlsx')
     assignments_path = os.path.join(base_path, f'FI Exception - {year}', f'{year}', month, 'weekly_assignments.csv')
     return csv_path, attendance_tracker_path, assignments_path, year, previous_day
@@ -89,7 +89,7 @@ csv_path, attendance_tracker_path, assignments_path, year, previous_day = get_dy
 csv_data = pd.read_csv(csv_path)
 
 # Load the attendance tracker
-attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
+attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='28 June')
 
 # Filter out analysts who are not on leave
 available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
