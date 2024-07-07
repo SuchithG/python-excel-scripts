@@ -8,19 +8,16 @@ from email.utils import formataddr
 
 # Function to get dynamic file paths
 def get_dynamic_paths(base_path):
-    today = datetime.today().strftime("%d-%b-%y")
-    previous_day = (datetime.today() - timedelta(days=1)).strftime("%d-%b-%y")
-
     analyst_weeks_path = os.path.join(base_path, 'analyst_weeks.xlsx')
     weekly_assignments_path = os.path.join(base_path, 'weekly_assignments.xlsx')
     attendance_tracker_path = os.path.join(base_path, 'Attendance Tracker.xlsx')
     notifications_data_path = os.path.join(base_path, '28 June.xlsx')
 
-    return analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day
+    return analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path
 
 # Function to get current week number
 def get_week_number():
-    return datetime.today().isocalendar()[1]
+    return datetime.strptime('28-Jun-24', '%d-%b-%y').isocalendar()[1]
 
 # Function to load analysts week data
 def load_analysts_week(analyst_weeks_path):
@@ -81,7 +78,7 @@ groups = {
 
 # Load paths
 base_path = 'your/base/path/here'
-analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day = get_dynamic_paths(base_path)
+analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path = get_dynamic_paths(base_path)
 
 # Load the attendance tracker
 attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
@@ -135,29 +132,34 @@ print(f"Weekly Assignments: \n{weekly_assignments_df}")
 # Load the notifications data
 notifications_data = pd.read_excel(notifications_data_path, sheet_name='28 June')
 
-# Calculate Open Exceptions for the current month excluding today's date
+# Hardcode today's date
+hardcoded_date = '28-Jun-24'
+hardcoded_date_dt = datetime.strptime(hardcoded_date, '%d-%b-%y').date()
+
+# Calculate Open Exceptions for the current month excluding hardcoded date
 open_exceptions_current_month = notifications_data[
-    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == datetime.today().strftime('%b %Y')) &
-    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date != datetime.today().date())
-]['NOTFCN_ID'].nunique()
+    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == hardcoded_date_dt.strftime('%b %Y')) &
+    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date != hardcoded_date_dt)
+]['NOTFCN_ID'].value_counts().to_dict()
 
 # Calculate Today's Open Exceptions
 todays_open_exceptions = notifications_data[
-    pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date == datetime.today().date()
-]['NOTFCN_ID'].nunique()
-
-# Calculate Total Exceptions
-total_exceptions = open_exceptions_current_month + todays_open_exceptions
+    pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date == hardcoded_date_dt
+]['NOTFCN_ID'].value_counts().to_dict()
 
 # Generate the report data
 report_data = []
 for analyst, notifications in assignments.items():
     for notification in notifications:
+        open_exception_count = open_exceptions_current_month.get(notification, 0)
+        todays_exception_count = todays_open_exceptions.get(notification, 0)
+        total_exceptions = open_exception_count + todays_exception_count
+        
         report_data.append({
             'Notification': notification,
             'Analyst': analyst,
-            'Open Exceptions (for current month)': open_exceptions_current_month,
-            "Today's Open Exception": todays_open_exceptions,
+            'Open Exceptions (for current month)': open_exception_count,
+            "Today's Open Exception": todays_exception_count,
             'Total Exceptions': total_exceptions
         })
 
