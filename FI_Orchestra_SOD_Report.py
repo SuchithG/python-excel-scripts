@@ -132,13 +132,33 @@ save_weekly_assignments(weekly_assignments_df, weekly_assignments_path)
 # Print final assignments for verification
 print(f"Weekly Assignments: \n{weekly_assignments_df}")
 
+# Load the notifications data
+notifications_data = pd.read_excel(notifications_data_path, sheet_name='28 June')
+
+# Calculate Open Exceptions for the current month excluding today's date
+open_exceptions_current_month = notifications_data[
+    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == datetime.today().strftime('%b %Y')) &
+    (pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date != datetime.today().date())
+]['NOTFCN_ID'].nunique()
+
+# Calculate Today's Open Exceptions
+todays_open_exceptions = notifications_data[
+    pd.to_datetime(notifications_data['NOTFCN_CRTE_TMS']).dt.date == datetime.today().date()
+]['NOTFCN_ID'].nunique()
+
+# Calculate Total Exceptions
+total_exceptions = open_exceptions_current_month + todays_open_exceptions
+
 # Generate the report data
 report_data = []
 for analyst, notifications in assignments.items():
     for notification in notifications:
         report_data.append({
             'Notification': notification,
-            'Analyst': analyst
+            'Analyst': analyst,
+            'Open Exceptions (for current month)': open_exceptions_current_month,
+            "Today's Open Exception": todays_open_exceptions,
+            'Total Exceptions': total_exceptions
         })
 
 report_df = pd.DataFrame(report_data)
