@@ -59,10 +59,20 @@ def assign_notifications(analyst_mapping, available_analysts, groups):
         else:
             unassigned_notifications.extend(groups[group])
 
-    while unassigned_notifications:
-        for analyst in available_analysts:
-            if unassigned_notifications:
-                assignments[analyst].append(unassigned_notifications.pop(0))
+    # Equally distribute unassigned notifications among available analysts
+    total_notifications = len(unassigned_notifications)
+    if total_notifications > 0:
+        notifications_per_analyst = total_notifications // len(available_analysts)
+        extra_notifications = total_notifications % len(available_analysts)
+        
+        for i, analyst in enumerate(available_analysts):
+            start_index = i * notifications_per_analyst
+            end_index = start_index + notifications_per_analyst
+            assignments[analyst].extend(unassigned_notifications[start_index:end_index])
+        
+        # Distribute the extra notifications
+        for i in range(extra_notifications):
+            assignments[available_analysts[i]].append(unassigned_notifications[-(i+1)])
 
     return assignments
 
