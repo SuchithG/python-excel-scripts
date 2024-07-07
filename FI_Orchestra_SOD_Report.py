@@ -11,12 +11,16 @@ def get_dynamic_paths(base_path):
     today = datetime.today().strftime("%d-%b-%y")
     previous_day = (datetime.today() - timedelta(days=1)).strftime("%d-%b-%y")
 
-    csv_path = os.path.join(base_path, '28 June.xlsx')
-    attendance_tracker_path = os.path.join(base_path, 'Attendance Tracker.xlsx')
-    assignments_path = os.path.join(base_path, 'weekly_assignments.xlsx')
     analyst_weeks_path = os.path.join(base_path, 'analyst_weeks.xlsx')
+    weekly_assignments_path = os.path.join(base_path, 'weekly_assignments.xlsx')
+    attendance_tracker_path = os.path.join(base_path, 'Attendance Tracker.xlsx')
+    notifications_data_path = os.path.join(base_path, '28 June.xlsx')
 
-    return csv_path, attendance_tracker_path, assignments_path, analyst_weeks_path, today, previous_day
+    return analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day
+
+# Function to get current week number
+def get_week_number():
+    return datetime.today().isocalendar()[1]
 
 # Function to load analysts week data
 def load_analysts_week(analyst_weeks_path):
@@ -27,29 +31,39 @@ def load_analysts_week(analyst_weeks_path):
     else:
         return pd.DataFrame()
 
-# Function to load previous assignments
-def load_previous_assignments(assignments_path):
-    if os.path.exists(assignments_path):
-        df = pd.read_excel(assignments_path, sheet_name='Assignments').set_index('Group')
-        print(f"Loaded previous assignments: \n{df}")
-        return df, df.loc['Week', 'Analyst']
-    else:
-        return pd.DataFrame(), None
-
-# Function to save current assignments
-def save_current_assignments(analyst_mapping, assignments_path):
-    df = pd.DataFrame(list(analyst_mapping.items()), columns=['Group', 'Analyst'])
-    current_week = get_week_number()
-    df = pd.concat([df, pd.DataFrame([{'Group': 'Week', 'Analyst': current_week}])], ignore_index=True)
-    df.to_excel(assignments_path, sheet_name='Assignments', index=False)
-
 # Function to save analysts week data
 def save_analysts_week(analysts_week_df, analyst_weeks_path):
     analysts_week_df.to_excel(analyst_weeks_path, index=False)
 
-# Function to get current week number
-def get_week_number():
-    return datetime.today().isocalendar()[1]
+# Function to load weekly assignments
+def load_weekly_assignments(weekly_assignments_path):
+    if os.path.exists(weekly_assignments_path):
+        df = pd.read_excel(weekly_assignments_path)
+        print(f"Loaded weekly assignments: \n{df}")
+        return df
+    else:
+        return pd.DataFrame()
+
+# Function to save weekly assignments
+def save_weekly_assignments(weekly_assignments_df, weekly_assignments_path):
+    weekly_assignments_df.to_excel(weekly_assignments_path, index=False)
+
+# Function to assign notifications
+def assign_notifications(analyst_mapping, available_analysts, groups):
+    assignments = {}
+    for group, analyst in analyst_mapping.items():
+        if analyst in available_analysts:
+            assignments[analyst] = assignments.get(analyst, []) + groups[group]
+        else:
+            assignments['Unassigned'] = assignments.get('Unassigned', []) + groups[group]
+
+    unassigned_notifications = assignments.pop('Unassigned', [])
+    while unassigned_notifications:
+        for analyst in available_analysts:
+            if unassigned_notifications:
+                assignments[analyst].append(unassigned_notifications.pop(0))
+
+    return assignments
 
 # Define groups
 groups = {
@@ -65,10 +79,7 @@ groups = {
 
 # Load paths
 base_path = 'your/base/path/here'
-csv_path, attendance_tracker_path, assignments_path, analyst_weeks_path, today, previous_day = get_dynamic_paths(base_path)
-
-# Load the CSV data
-csv_data = pd.read_excel(csv_path, sheet_name='28 June')
+analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day = get_dynamic_paths(base_path)
 
 # Load the attendance tracker
 attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
@@ -84,63 +95,48 @@ print(f"Unavailable analysts: {unavailable_analysts}")
 # Load analysts week data
 analysts_week_df = load_analysts_week(analyst_weeks_path)
 
-# If analysts week data is empty, initialize it
-if analysts_week_df.empty:
+# Get current week
+current_week = get_week_number()
+
+# If analysts week data is empty or new week, initialize it
+if analysts_week_df.empty or current_week not in analysts_week_df['Week'].values:
     all_analysts = attendance_tracker[attendance_tracker['Name'] != 'Karthik']['Name'].tolist()
-    analysts_week_df = pd.DataFrame({
-        'Analyst': all_analysts * (len(groups) // len(all_analysts)) + all_analysts[:len(groups) % len(all_analysts)],
-        'Week': list(range(1, len(groups) + 1))
+    new_week_analysts = pd.DataFrame({
+        'Analyst': all_analysts,
+        'Group': list(groups.keys()),
+        'Week': current_week
     })
+    analysts_week_df = pd.concat([analysts_week_df, new_week_analysts], ignore_index=True)
     save_analysts_week(analysts_week_df, analyst_weeks_path)
 
-# Calculate Open Exceptions for the current month
-open_exceptions = csv_data[pd.to_datetime(csv_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == datetime.today().strftime('%b %Y')]['NOTFCN_ID'].nunique()
+# Get the current week's analyst mapping
+current_week_mapping = analysts_week_df[analysts_week_df['Week'] == current_week].set_index('Group')['Analyst'].to_dict()
 
-# Load previous assignments
-previous_assignments, previous_week = load_previous_assignments(assignments_path)
+# Assign notifications
+assignments = assign_notifications(current_week_mapping, available_analysts, groups)
 
-# Print debug information
-print(f"Previous Assignments: \n{previous_assignments}")
-print(f"Previous Week: {previous_week}")
+# Prepare weekly assignments dataframe
+weekly_assignments_data = []
+for analyst, notifications in assignments.items():
+    for notification in notifications:
+        weekly_assignments_data.append({
+            'Analyst': analyst,
+            'Notification': notification
+        })
 
-# Assign groups to analysts
-analyst_mapping = {}
-current_week = get_week_number()
-print(f"Current Week: {current_week}")
-
-if previous_week == current_week:
-    analyst_mapping = previous_assignments['Analyst'].to_dict()
-else:
-    week_analysts = analysts_week_df[analysts_week_df['Week'] == current_week % len(groups) + 1]['Analyst'].tolist()
-    for i, group in enumerate(groups.keys()):
-        analyst_mapping[group] = week_analysts[i % len(week_analysts)]
-
-# Reassign groups if the assigned analyst is not available
-for group, notifications in groups.items():
-    assigned_analyst = analyst_mapping[group]
-    if assigned_analyst not in available_analysts:
-        available_copy = available_analysts.copy()
-        random.shuffle(available_copy)
-        temporary_analyst = available_copy.pop()
-        analyst_mapping[group] = temporary_analyst
-        print(f"Group {group} reassigned to {temporary_analyst} for today")
+weekly_assignments_df = pd.DataFrame(weekly_assignments_data)
+save_weekly_assignments(weekly_assignments_df, weekly_assignments_path)
 
 # Print final assignments for verification
-for group, analyst in analyst_mapping.items():
-    print(f"{group} assigned to {analyst}")
-
-# Save the assignments only if it's a new week
-if previous_week != current_week:
-    save_current_assignments(analyst_mapping, assignments_path)
+print(f"Weekly Assignments: \n{weekly_assignments_df}")
 
 # Generate the report data
 report_data = []
-for group, notifications in groups.items():
-    assigned_analyst = analyst_mapping[group]
+for analyst, notifications in assignments.items():
     for notification in notifications:
         report_data.append({
             'Notification': notification,
-            'Analyst': assigned_analyst
+            'Analyst': analyst
         })
 
 report_df = pd.DataFrame(report_data)
