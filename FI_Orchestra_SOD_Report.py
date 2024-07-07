@@ -78,6 +78,7 @@ groups = {
 
 # Load paths
 base_path = 'your/base/path/here'
+output_path = 'your/output/path/here'  # Specify the folder where you want to save the output file
 analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path = get_dynamic_paths(base_path)
 
 # Load the attendance tracker
@@ -168,7 +169,7 @@ for analyst, notifications in assignments.items():
 report_df = pd.DataFrame(report_data)
 
 # Save the report
-report_file = f"notification_report_{datetime.today().year}.xlsx"
+report_file = os.path.join(output_path, f"notification_report_{datetime.today().year}.xlsx")
 report_df.to_excel(report_file, index=False)
 print(f"Report has been generated and saved as {report_file}")
 
