@@ -100,8 +100,10 @@ current_week = get_week_number()
 # If analysts week data is empty or new week, initialize it
 if analysts_week_df.empty or current_week not in analysts_week_df['Week'].values:
     all_analysts = attendance_tracker[attendance_tracker['Name'] != 'Karthik']['Name'].tolist()
+    previous_week = analysts_week_df['Week'].max() if not analysts_week_df.empty else current_week - 1
+    previous_week_analysts = analysts_week_df[analysts_week_df['Week'] == previous_week].sort_values('Group')['Analyst'].tolist()
     new_week_analysts = pd.DataFrame({
-        'Analyst': all_analysts,
+        'Analyst': previous_week_analysts[1:] + [previous_week_analysts[0]],  # Round-robin rotation
         'Group': list(groups.keys()),
         'Week': current_week
     })
@@ -159,7 +161,7 @@ for analyst, notifications in assignments.items():
             'Notification': notification,
             'Analyst': analyst,
             'Open Exceptions (for current month)': open_exception_count,
-            "Today's Open Exception": todays_exception_count,
+            'Today Open Exception': todays_exception_count,
             'Total Exceptions': total_exceptions
         })
 
