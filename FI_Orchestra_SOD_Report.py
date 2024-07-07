@@ -4,6 +4,7 @@ import random
 from datetime import datetime, timedelta
 import smtplib
 from email.message import EmailMessage
+from email.utils import formataddr
 
 # Function to get dynamic file paths
 def get_dynamic_paths(base_path):
@@ -12,14 +13,24 @@ def get_dynamic_paths(base_path):
 
     csv_path = os.path.join(base_path, '28 June.xlsx')
     attendance_tracker_path = os.path.join(base_path, 'Attendance Tracker.xlsx')
-    assignments_path = os.path.join(base_path, 'weekly_assignments.csv')
+    assignments_path = os.path.join(base_path, 'weekly_assignments.xlsx')
+    analyst_weeks_path = os.path.join(base_path, 'analyst_weeks.xlsx')
 
-    return csv_path, attendance_tracker_path, assignments_path, today, previous_day
+    return csv_path, attendance_tracker_path, assignments_path, analyst_weeks_path, today, previous_day
+
+# Function to load analysts week data
+def load_analysts_week(analyst_weeks_path):
+    if os.path.exists(analyst_weeks_path):
+        df = pd.read_excel(analyst_weeks_path)
+        print(f"Loaded analysts week data: \n{df}")
+        return df
+    else:
+        return pd.DataFrame()
 
 # Function to load previous assignments
 def load_previous_assignments(assignments_path):
     if os.path.exists(assignments_path):
-        df = pd.read_csv(assignments_path).set_index('Group')
+        df = pd.read_excel(assignments_path, sheet_name='Assignments').set_index('Group')
         print(f"Loaded previous assignments: \n{df}")
         return df, df.loc['Week', 'Analyst']
     else:
@@ -30,7 +41,11 @@ def save_current_assignments(analyst_mapping, assignments_path):
     df = pd.DataFrame(list(analyst_mapping.items()), columns=['Group', 'Analyst'])
     current_week = get_week_number()
     df = pd.concat([df, pd.DataFrame([{'Group': 'Week', 'Analyst': current_week}])], ignore_index=True)
-    df.to_csv(assignments_path, index=False)
+    df.to_excel(assignments_path, sheet_name='Assignments', index=False)
+
+# Function to save analysts week data
+def save_analysts_week(analysts_week_df, analyst_weeks_path):
+    analysts_week_df.to_excel(analyst_weeks_path, index=False)
 
 # Function to get current week number
 def get_week_number():
@@ -50,9 +65,9 @@ groups = {
 
 # Load paths
 base_path = 'your/base/path/here'
-csv_path, attendance_tracker_path, assignments_path, today, previous_day = get_dynamic_paths(base_path)
+csv_path, attendance_tracker_path, assignments_path, analyst_weeks_path, today, previous_day = get_dynamic_paths(base_path)
 
-# Load the CSV data with ISO-8859-1 encoding
+# Load the CSV data
 csv_data = pd.read_excel(csv_path, sheet_name='28 June')
 
 # Load the attendance tracker
@@ -65,6 +80,18 @@ unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')
 # Print available and unavailable analysts
 print(f"Available analysts: {available_analysts}")
 print(f"Unavailable analysts: {unavailable_analysts}")
+
+# Load analysts week data
+analysts_week_df = load_analysts_week(analyst_weeks_path)
+
+# If analysts week data is empty, initialize it
+if analysts_week_df.empty:
+    all_analysts = attendance_tracker[attendance_tracker['Name'] != 'Karthik']['Name'].tolist()
+    analysts_week_df = pd.DataFrame({
+        'Analyst': all_analysts * (len(groups) // len(all_analysts)) + all_analysts[:len(groups) % len(all_analysts)],
+        'Week': list(range(1, len(groups) + 1))
+    })
+    save_analysts_week(analysts_week_df, analyst_weeks_path)
 
 # Calculate Open Exceptions for the current month
 open_exceptions = csv_data[pd.to_datetime(csv_data['NOTFCN_CRTE_TMS']).dt.strftime('%b %Y') == datetime.today().strftime('%b %Y')]['NOTFCN_ID'].nunique()
@@ -84,10 +111,9 @@ print(f"Current Week: {current_week}")
 if previous_week == current_week:
     analyst_mapping = previous_assignments['Analyst'].to_dict()
 else:
-    initial_analysts = available_analysts.copy()
-    random.shuffle(initial_analysts)  # Shuffle the list to ensure random distribution
+    week_analysts = analysts_week_df[analysts_week_df['Week'] == current_week % len(groups) + 1]['Analyst'].tolist()
     for i, group in enumerate(groups.keys()):
-        analyst_mapping[group] = initial_analysts[i % len(initial_analysts)]
+        analyst_mapping[group] = week_analysts[i % len(week_analysts)]
 
 # Reassign groups if the assigned analyst is not available
 for group, notifications in groups.items():
@@ -103,8 +129,9 @@ for group, notifications in groups.items():
 for group, analyst in analyst_mapping.items():
     print(f"{group} assigned to {analyst}")
 
-# Save the assignments
-save_current_assignments(analyst_mapping, assignments_path)
+# Save the assignments only if it's a new week
+if previous_week != current_week:
+    save_current_assignments(analyst_mapping, assignments_path)
 
 # Generate the report data
 report_data = []
@@ -127,22 +154,18 @@ print(f"Report has been generated and saved as {report_file}")
 def send_email(subject, body, to_emails, attachment_path):
     msg = EmailMessage()
     msg['Subject'] = subject
-    msg['From'] = 'your_email@example.com'
+    msg['From'] = formataddr(('Sender Name', 'sender@example.com'))
     msg['To'] = ', '.join(to_emails)
     msg.set_content(body)
 
-    # Attach the report file
     with open(attachment_path, 'rb') as f:
         file_data = f.read()
         file_name = os.path.basename(attachment_path)
         msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
 
-    # Send the email via SMTP
-    with smtplib.SMTP('smtp.your_email_provider.com', 587) as server:
-        server.starttls()
-        server.login('your_email@example.com', 'your_password')
+    with smtplib.SMTP('smtp.example.com', 25) as server:
         server.send_message(msg)
-        print(f"Email sent to: {', '.join(to_emails)}")
+    print(f"Email sent to {', '.join(to_emails)}")
 
 # Send the email with the report
 send_email(
