@@ -50,14 +50,15 @@ def save_weekly_assignments(weekly_assignments_df, weekly_assignments_path):
 
 # Function to assign notifications
 def assign_notifications(analyst_mapping, available_analysts, groups):
-    assignments = {}
+    assignments = {analyst: [] for analyst in available_analysts}
+    unassigned_notifications = []
+
     for group, analyst in analyst_mapping.items():
         if analyst in available_analysts:
-            assignments[analyst] = assignments.get(analyst, []) + groups[group]
+            assignments[analyst].extend(groups[group])
         else:
-            assignments['Unassigned'] = assignments.get('Unassigned', []) + groups[group]
+            unassigned_notifications.extend(groups[group])
 
-    unassigned_notifications = assignments.pop('Unassigned', [])
     while unassigned_notifications:
         for analyst in available_analysts:
             if unassigned_notifications:
@@ -77,75 +78,6 @@ groups = {
     'Group 8': [550, 720, 70021, 700928]
 }
 
-# Load paths
-base_path = 'your/base/path/here'
-analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day = get_dynamic_paths(base_path)
-
-# Load the attendance tracker
-attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
-
-# Filter out analysts who are not on leave
-available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
-unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')]['Name'].tolist()
-
-# Print available and unavailable analysts
-print(f"Available analysts: {available_analysts}")
-print(f"Unavailable analysts: {unavailable_analysts}")
-
-# Load analysts week data
-analysts_week_df = load_analysts_week(analyst_weeks_path)
-
-# Get current week
-current_week = get_week_number()
-
-# If analysts week data is empty or new week, initialize it
-if analysts_week_df.empty or current_week not in analysts_week_df['Week'].values:
-    all_analysts = attendance_tracker[attendance_tracker['Name'] != 'Karthik']['Name'].tolist()
-    new_week_analysts = pd.DataFrame({
-        'Analyst': all_analysts,
-        'Group': list(groups.keys()),
-        'Week': current_week
-    })
-    analysts_week_df = pd.concat([analysts_week_df, new_week_analysts], ignore_index=True)
-    save_analysts_week(analysts_week_df, analyst_weeks_path)
-
-# Get the current week's analyst mapping
-current_week_mapping = analysts_week_df[analysts_week_df['Week'] == current_week].set_index('Group')['Analyst'].to_dict()
-
-# Assign notifications
-assignments = assign_notifications(current_week_mapping, available_analysts, groups)
-
-# Prepare weekly assignments dataframe
-weekly_assignments_data = []
-for analyst, notifications in assignments.items():
-    for notification in notifications:
-        weekly_assignments_data.append({
-            'Analyst': analyst,
-            'Notification': notification
-        })
-
-weekly_assignments_df = pd.DataFrame(weekly_assignments_data)
-save_weekly_assignments(weekly_assignments_df, weekly_assignments_path)
-
-# Print final assignments for verification
-print(f"Weekly Assignments: \n{weekly_assignments_df}")
-
-# Generate the report data
-report_data = []
-for analyst, notifications in assignments.items():
-    for notification in notifications:
-        report_data.append({
-            'Notification': notification,
-            'Analyst': analyst
-        })
-
-report_df = pd.DataFrame(report_data)
-
-# Save the report
-report_file = f"notification_report_{datetime.today().year}.xlsx"
-report_df.to_excel(report_file, index=False)
-print(f"Report has been generated and saved as {report_file}")
-
 # Define the send_email function
 def send_email(subject, body, to_emails, attachment_path):
     msg = EmailMessage()
@@ -163,10 +95,84 @@ def send_email(subject, body, to_emails, attachment_path):
         server.send_message(msg)
     print(f"Email sent to {', '.join(to_emails)}")
 
-# Send the email with the report
-send_email(
-    subject="Daily Exception Report",
-    body="Please find attached the daily exception report.",
-    to_emails=['suchith.girishkumar@db.com'],
-    attachment_path=report_file
-)
+# Main function to encapsulate the script logic
+def main():
+    # Load paths
+    base_path = 'your/base/path/here'
+    analyst_weeks_path, weekly_assignments_path, attendance_tracker_path, notifications_data_path, today, previous_day = get_dynamic_paths(base_path)
+
+    # Load the attendance tracker
+    attendance_tracker = pd.read_excel(attendance_tracker_path, sheet_name='Sheet1')
+
+    # Filter out analysts who are not on leave
+    available_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'No') & (attendance_tracker['Name'] != 'Karthik')]['Name'].tolist()
+    unavailable_analysts = attendance_tracker[(attendance_tracker['Leave'] == 'Yes')]['Name'].tolist()
+
+    # Print available and unavailable analysts
+    print(f"Available analysts: {available_analysts}")
+    print(f"Unavailable analysts: {unavailable_analysts}")
+
+    # Load analysts week data
+    analysts_week_df = load_analysts_week(analyst_weeks_path)
+
+    # Get current week
+    current_week = get_week_number()
+
+    # If analysts week data is empty or new week, initialize it
+    if analysts_week_df.empty or current_week not in analysts_week_df['Week'].values:
+        all_analysts = attendance_tracker[attendance_tracker['Name'] != 'Karthik']['Name'].tolist()
+        new_week_analysts = pd.DataFrame({
+            'Analyst': all_analysts,
+            'Group': list(groups.keys()),
+            'Week': current_week
+        })
+        analysts_week_df = pd.concat([analysts_week_df, new_week_analysts], ignore_index=True)
+        save_analysts_week(analysts_week_df, analyst_weeks_path)
+
+    # Get the current week's analyst mapping
+    current_week_mapping = analysts_week_df[analysts_week_df['Week'] == current_week].set_index('Group')['Analyst'].to_dict()
+
+    # Assign notifications
+    assignments = assign_notifications(current_week_mapping, available_analysts, groups)
+
+    # Prepare weekly assignments dataframe
+    weekly_assignments_data = []
+    for analyst, notifications in assignments.items():
+        for notification in notifications:
+            weekly_assignments_data.append({
+                'Analyst': analyst,
+                'Notification': notification
+            })
+
+    weekly_assignments_df = pd.DataFrame(weekly_assignments_data)
+    save_weekly_assignments(weekly_assignments_df, weekly_assignments_path)
+
+    # Print final assignments for verification
+    print(f"Weekly Assignments: \n{weekly_assignments_df}")
+
+    # Generate the report data
+    report_data = []
+    for analyst, notifications in assignments.items():
+        for notification in notifications:
+            report_data.append({
+                'Notification': notification,
+                'Analyst': analyst
+            })
+
+    report_df = pd.DataFrame(report_data)
+
+    # Save the report
+    report_file = f"notification_report_{datetime.today().year}.xlsx"
+    report_df.to_excel(report_file, index=False)
+    print(f"Report has been generated and saved as {report_file}")
+
+    # Send the email with the report
+    send_email(
+        subject="Daily Exception Report",
+        body="Please find attached the daily exception report.",
+        to_emails=['suchith.girishkumar@db.com'],
+        attachment_path=report_file
+    )
+
+# Run the main function
+main()
