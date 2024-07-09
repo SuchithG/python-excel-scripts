@@ -8,13 +8,14 @@ notification_df = pd.read_excel(notification_report_path)
 june_28_path = 'path/to/28 June.xlsx'
 june_28_df = pd.read_excel(june_28_path)
 
-# Sum the notification counts
-exceptions_count_eod = june_28_df['NOTFCN_CNT'].sum()
+# Sum the counts of each notification ID
+exceptions_count_eod = june_28_df.groupby('NOTFCN_ID')['NOTFCN_CNT'].sum().reset_index()
+exceptions_count_eod.columns = ['Notification', 'Exceptions count EOD']
 
-# Add the new column to the notification report
-notification_df['Exceptions count EOD'] = exceptions_count_eod
+# Merge the sum of counts with the notification report
+updated_notification_df = pd.merge(notification_df, exceptions_count_eod, on='Notification', how='left')
 
 # Save the modified notification report
-notification_df.to_excel('path/to/modified_notification_report_2024.xlsx', index=False)
+updated_notification_df.to_excel('path/to/modified_notification_report_2024.xlsx', index=False)
 
 print("New column 'Exceptions count EOD' added and file saved as 'modified_notification_report_2024.xlsx'")
