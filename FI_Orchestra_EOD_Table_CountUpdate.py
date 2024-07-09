@@ -6,7 +6,7 @@ notification_df = pd.read_excel(notification_report_path)
 
 # Load the June 28 data
 june_28_path = 'path/to/28 June.xlsx'
-june_28_df = pd.read_excel(june_28_path)
+june_28_df = pd.read_excel(june_28_path, sheet_name='28 June')
 
 # Sum the counts of each notification ID
 exceptions_count_eod = june_28_df.groupby('NOTFCN_ID')['NOTFCN_CNT'].sum().reset_index()
